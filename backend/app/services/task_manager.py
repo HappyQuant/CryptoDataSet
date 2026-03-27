@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Tuple
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime
@@ -24,10 +24,15 @@ class TaskInfo:
     created_at: float
     started_at: Optional[float] = None
     completed_at: Optional[float] = None
-    message: str = ""
+    message_zh: str = ""
+    message_en: str = ""
     collected_count: int = 0
     error_message: Optional[str] = None
-    
+
+    @property
+    def message(self) -> str:
+        return self.message_zh
+
     def to_dict(self) -> dict:
         return {
             "task_id": self.task_id,
@@ -38,10 +43,15 @@ class TaskInfo:
             "created_at": self.created_at,
             "started_at": self.started_at,
             "completed_at": self.completed_at,
-            "message": self.message,
+            "message_zh": self.message_zh,
+            "message_en": self.message_en,
             "collected_count": self.collected_count,
             "error_message": self.error_message,
         }
+
+
+def create_task_message(zh: str, en: str) -> Tuple[str, str]:
+    return zh, en
 
 
 class TaskManager:
@@ -90,7 +100,8 @@ class TaskManager:
             interval=interval,
             status=TaskStatus.PENDING,
             created_at=time.time(),
-            message="等待执行",
+            message_zh="等待执行",
+            message_en="Pending",
         )
         self._tasks[task_id] = task_info
         return task_info
@@ -100,16 +111,18 @@ class TaskManager:
         if task_info and task_info.status == TaskStatus.PENDING:
             task_info.status = TaskStatus.RUNNING
             task_info.started_at = time.time()
-            task_info.message = "执行中"
+            task_info.message_zh = "执行中"
+            task_info.message_en = "Running"
             self._running_task_types[task_info.task_type] = True
 
-    def complete_task(self, task_id: str, collected_count: int, message: str = ""):
+    def complete_task(self, task_id: str, collected_count: int, message_zh: str = "", message_en: str = ""):
         task_info = self._tasks.get(task_id)
         if task_info and task_info.status == TaskStatus.RUNNING:
             task_info.status = TaskStatus.COMPLETED
             task_info.completed_at = time.time()
             task_info.collected_count = collected_count
-            task_info.message = message or "已完成"
+            task_info.message_zh = message_zh or "已完成"
+            task_info.message_en = message_en or "Completed"
             if task_info.task_type in self._running_task_types:
                 del self._running_task_types[task_info.task_type]
 
@@ -119,7 +132,8 @@ class TaskManager:
             task_info.status = TaskStatus.FAILED
             task_info.completed_at = time.time()
             task_info.error_message = error_message
-            task_info.message = f"失败: {error_message}"
+            task_info.message_zh = f"失败: {error_message}"
+            task_info.message_en = f"Failed: {error_message}"
             if task_info.task_type in self._running_task_types:
                 del self._running_task_types[task_info.task_type]
 
@@ -128,7 +142,8 @@ class TaskManager:
         if task_info and task_info.status == TaskStatus.RUNNING:
             task_info.status = TaskStatus.INTERRUPTED
             task_info.completed_at = time.time()
-            task_info.message = "任务被中断"
+            task_info.message_zh = "任务被中断"
+            task_info.message_en = "Task interrupted"
             if task_info.task_type in self._running_task_types:
                 del self._running_task_types[task_info.task_type]
 
@@ -137,17 +152,19 @@ class TaskManager:
             if task_info.status == TaskStatus.RUNNING:
                 task_info.status = TaskStatus.INTERRUPTED
                 task_info.completed_at = time.time()
-                task_info.message = "程序中断"
+                task_info.message_zh = "程序中断"
+                task_info.message_en = "Application stopped"
         self._running_task_types.clear()
 
     def get_task(self, task_id: str) -> Optional[TaskInfo]:
         return self._tasks.get(task_id)
 
-    def update_task_progress(self, task_id: str, collected_count: int, message: str):
+    def update_task_progress(self, task_id: str, collected_count: int, message_zh: str, message_en: str):
         task_info = self._tasks.get(task_id)
         if task_info and task_info.status == TaskStatus.RUNNING:
             task_info.collected_count = collected_count
-            task_info.message = message
+            task_info.message_zh = message_zh
+            task_info.message_en = message_en
 
     def is_task_running_by_id(self, task_id: str) -> bool:
         task_info = self._tasks.get(task_id)

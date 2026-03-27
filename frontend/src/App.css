@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-:root {
+:root,
+[data-theme="light"] {
   --background: #f8f9fc;
   --background-secondary: #f1f3f8;
   --surface: #ffffff;
@@ -24,6 +25,30 @@
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.06);
 }
 
+[data-theme="dark"] {
+  --background: #0f172a;
+  --background-secondary: #1e293b;
+  --surface: #1e293b;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.15);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #818cf8;
+  --accent-hover: #6366f1;
+  --accent-light: rgba(129, 140, 248, 0.15);
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 6px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -43,6 +68,7 @@ body {
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 .app-layout {
@@ -61,6 +87,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .logo {
@@ -74,6 +101,7 @@ body {
   background: var(--surface) !important;
   border-right: 1px solid var(--border);
   margin-top: 0;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .app-sider .ant-layout-sider-children {
@@ -120,6 +148,7 @@ body {
   padding: 24px 28px;
   background: var(--background);
   min-height: calc(100vh - 56px);
+  transition: background 0.3s ease;
 }
 
 @media (max-width: 768px) {
@@ -141,12 +170,16 @@ body {
   border: 1px solid var(--border) !important;
   box-shadow: var(--shadow-sm) !important;
   font-size: 13px;
+  background: var(--surface) !important;
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .ant-card-head {
   border-bottom: 1px solid var(--border) !important;
   min-height: 44px !important;
   padding: 0 16px !important;
+  background: var(--background-secondary) !important;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .ant-card-head-title {
@@ -161,6 +194,8 @@ body {
 
 .ant-table {
   font-size: 13px !important;
+  background: var(--surface) !important;
+  transition: background 0.3s ease;
 }
 
 .ant-table-thead > tr > th {
@@ -175,6 +210,7 @@ body {
 .ant-table-tbody > tr > td {
   padding: 10px 12px !important;
   border-bottom: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
 }
 
 .ant-table-tbody > tr:hover > td {
@@ -208,10 +244,35 @@ body {
   font-size: 13px !important;
   border-radius: var(--radius-xs) !important;
   height: 34px !important;
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
 }
 
 .ant-select-selection-item {
   line-height: 32px !important;
+  color: var(--text-primary) !important;
+}
+
+.ant-select-selection-placeholder {
+  color: var(--text-muted) !important;
+}
+
+.ant-select-dropdown {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.ant-select-item {
+  color: var(--text-primary) !important;
+}
+
+.ant-select-item-option-selected {
+  background: var(--accent-light) !important;
+}
+
+.ant-select-item-option-active {
+  background: var(--background-secondary) !important;
 }
 
 .ant-tag {
@@ -284,6 +345,7 @@ body {
   height: 32px !important;
   line-height: 32px !important;
   border-top: 1px solid var(--border) !important;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 .ant-layout-sider-trigger:hover {
@@ -344,4 +406,51 @@ body {
   height: 120px;
   border-radius: var(--radius-sm);
   overflow: hidden;
+}
+
+.theme-toggle {
+  position: absolute;
+  right: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-actions {
+  position: absolute;
+  right: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-action-btn {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-secondary) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-secondary) !important;
+  transition: all 0.2s ease;
+}
+
+.header-action-btn:hover {
+  background: var(--accent-light) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.header-action-btn span {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="dark"] .main-chart,
+[data-theme="dark"] .indicator-chart {
+  background: #1a1a1a !important;
 }

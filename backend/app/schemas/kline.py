@@ -41,7 +41,8 @@ class TaskInfoResponse(BaseModel):
     created_at: float
     started_at: Optional[float] = None
     completed_at: Optional[float] = None
-    message: str
+    message_zh: str
+    message_en: str
     collected_count: int
     error_message: Optional[str] = None
 

@@ -4,6 +4,7 @@ import { DownloadOutlined } from '@ant-design/icons';
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries, IChartApi, ISeriesApi, CandlestickData, HistogramData, LineData, Time } from 'lightweight-charts';
 import axios from 'axios';
 import dayjs from 'dayjs';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const { Option } = Select;
 
@@ -45,6 +46,7 @@ const INDICATOR_OPTIONS: { value: IndicatorType; label: string }[] = [
 ];
 
 const KlineChart: React.FC = () => {
+  const { t } = useLanguage();
   const mainChartContainerRef = useRef<HTMLDivElement>(null);
   const indicatorChartContainerRef = useRef<HTMLDivElement>(null);
   const mainChartRef = useRef<IChartApi | null>(null);
@@ -736,31 +738,31 @@ const KlineChart: React.FC = () => {
     <div className="kline-chart-wrapper">
       <Card
         className="kline-chart-card"
-        title="K线图表"
-        extra={<Spin spinning={isLoadingHistory || isLoadingFuture} size="small"><span style={{ fontSize: 12, color: '#64748b' }}>{isLoadingHistory ? '加载历史中...' : isLoadingFuture ? '加载未来中...' : ''}</span></Spin>}
+        title={t.chart.title}
+        extra={<Spin spinning={isLoadingHistory || isLoadingFuture} size="small"><span style={{ fontSize: 12, color: '#64748b' }}>{isLoadingHistory ? t.chart.loadingHistory : isLoadingFuture ? t.chart.loadingFuture : ''}</span></Spin>}
       >
         <div className="chart-controls">
           <div className="control-row">
             <Form form={form} layout="inline" onValuesChange={handleValuesChange} className="chart-form">
-              <Form.Item label="交易对" name="symbol" rules={[{ required: true }]}>
+              <Form.Item label={t.chart.symbol} name="symbol" rules={[{ required: true }]}>
                 <Select style={{ width: 120 }} loading={configLoading}>{config.symbols.map(s => <Option key={s} value={s}>{s}</Option>)}</Select>
               </Form.Item>
-              <Form.Item label="K线间隔" name="interval" rules={[{ required: true }]}>
+              <Form.Item label={t.chart.interval} name="interval" rules={[{ required: true }]}>
                 <Select style={{ width: 100 }} loading={configLoading}>{config.intervals.map(i => <Option key={i} value={i}>{i}</Option>)}</Select>
               </Form.Item>
-              <Form.Item label="跳转时间">
-                <DatePicker showTime value={selectedTime} onChange={setSelectedTime} placeholder="选择时间" style={{ width: 170 }} />
+              <Form.Item label={t.chart.jumpToTime}>
+                <DatePicker showTime value={selectedTime} onChange={setSelectedTime} placeholder={t.chart.selectTime} style={{ width: 170 }} />
               </Form.Item>
               <Form.Item>
-                <Button type="primary" onClick={handleJumpToTime} icon={<DownloadOutlined />}>跳转</Button>
+                <Button type="primary" onClick={handleJumpToTime} icon={<DownloadOutlined />}>{t.chart.jump}</Button>
               </Form.Item>
             </Form>
           </div>
 
           <div className="indicator-row">
-            <span className="indicator-label">指标:</span>
+            <span className="indicator-label">{t.chart.indicator}:</span>
             <Select value={selectedIndicator} onChange={handleIndicatorChange} style={{ width: 120 }}>
-              {INDICATOR_OPTIONS.map(opt => <Option key={opt.value} value={opt.value}>{opt.label}</Option>)}
+              {INDICATOR_OPTIONS.map(opt => <Option key={opt.value} value={opt.value}>{t.indicators[opt.value]}</Option>)}
             </Select>
 
             <div className="ma-tags">

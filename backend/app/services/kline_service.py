@@ -215,9 +215,10 @@ class KlineService:
             
             # 更新任务进度
             task_manager.update_task_progress(
-                task_id, 
-                total_collected, 
-                f"初始采集完成，开始分析断档"
+                task_id,
+                total_collected,
+                f"初始采集完成，开始分析断档",
+                f"Initial collection completed, analyzing gaps"
             )
             
             # 第二步：分析从起始点到当前时间的断档
@@ -264,9 +265,10 @@ class KlineService:
                         total_collected += inserted_count
                         
                         task_manager.update_task_progress(
-                            task_id, 
-                            total_collected, 
-                            f"采集中，已采集 {total_collected} 条"
+                            task_id,
+                            total_collected,
+                            f"采集中，已采集 {total_collected} 条",
+                            f"Collecting, {total_collected} records collected"
                         )
                         
                         last_time = parsed_data[-1]['open_time']
@@ -324,7 +326,8 @@ class KlineService:
                     task_manager.update_task_progress(
                         task_id,
                         total_collected,
-                        f"数据完整，无需补采，已采集 {total_collected} 条"
+                        f"数据完整，无需补采，已采集 {total_collected} 条",
+                        f"Data complete, no gaps to fill, {total_collected} records collected"
                     )
 
                 # 第三步：补采断档
@@ -343,7 +346,8 @@ class KlineService:
                     task_manager.update_task_progress(
                         task_id,
                         total_collected,
-                        f"补采第 {i}/{len(gaps)} 个区间: {start_str} ~ {end_str}"
+                        f"补采第 {i}/{len(gaps)} 个区间: {start_str} ~ {end_str}",
+                        f"Filling gap {i}/{len(gaps)}: {start_str} ~ {end_str}"
                     )
 
                     current_start = gap_start
@@ -392,7 +396,8 @@ class KlineService:
                             task_manager.update_task_progress(
                                 task_id,
                                 total_collected,
-                                f"补采第 {i}/{len(gaps)} 个区间，已采集 {total_collected} 条"
+                                f"补采第 {i}/{len(gaps)} 个区间，已采集 {total_collected} 条",
+                                f"Filling gap {i}/{len(gaps)}, {total_collected} records collected"
                             )
 
                             if len(klines) < 1000:
@@ -413,7 +418,7 @@ class KlineService:
                     print(f"断档补采完成，插入 {gap_collected} 条数据")
             
             # 任务完成
-            task_manager.complete_task(task_id, total_collected, f"采集完成，共 {total_collected} 条")
+            task_manager.complete_task(task_id, total_collected, f"采集完成，共 {total_collected} 条", f"Collection completed, {total_collected} records collected")
             print(f"任务 {task_id} 完成，共采集 {total_collected} 条")
 
         except Exception as e:

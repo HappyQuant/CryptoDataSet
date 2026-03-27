@@ -3,21 +3,26 @@ from fastapi import Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Callable, Dict, Tuple
 from collections import defaultdict
-import asyncio
 
 
 class RateLimiter:
-    def __init__(self, requests_per_minute: int = 60, requests_per_hour: int = 1000):
+    def __init__(self, requests_per_second: int = 30, requests_per_minute: int = 1000):
+        self.requests_per_second = requests_per_second
         self.requests_per_minute = requests_per_minute
-        self.requests_per_hour = requests_per_hour
+        self._second_requests: Dict[str, list] = defaultdict(list)
         self._minute_requests: Dict[str, list] = defaultdict(list)
-        self._hour_requests: Dict[str, list] = defaultdict(list)
-        self._cleanup_task = None
 
     def _cleanup_old_entries(self):
         current_time = time.time()
+        one_second_ago = current_time - 1
         one_minute_ago = current_time - 60
-        one_hour_ago = current_time - 3600
+
+        for key in list(self._second_requests.keys()):
+            self._second_requests[key] = [
+                t for t in self._second_requests[key] if t > one_second_ago
+            ]
+            if not self._second_requests[key]:
+                del self._second_requests[key]
 
         for key in list(self._minute_requests.keys()):
             self._minute_requests[key] = [
@@ -26,23 +31,25 @@ class RateLimiter:
             if not self._minute_requests[key]:
                 del self._minute_requests[key]
 
-        for key in list(self._hour_requests.keys()):
-            self._hour_requests[key] = [
-                t for t in self._hour_requests[key] if t > one_hour_ago
-            ]
-            if not self._hour_requests[key]:
-                del self._hour_requests[key]
-
     async def check_rate_limit(self, client_id: str) -> Tuple[bool, dict]:
         current_time = time.time()
 
         self._cleanup_old_entries()
 
+        second_count = len(self._second_requests.get(client_id, []))
         minute_count = len(self._minute_requests.get(client_id, []))
-        hour_count = len(self._hour_requests.get(client_id, []))
+
+        if second_count >= self.requests_per_second:
+            retry_after = 1 - (current_time - min(self._second_requests[client_id])) if self._second_requests.get(client_id) else 1
+            return False, {
+                "error": "Rate limit exceeded",
+                "limit": self.requests_per_second,
+                "window": "1 second",
+                "retry_after": int(retry_after) + 1,
+            }
 
         if minute_count >= self.requests_per_minute:
-            retry_after = 60 - (current_time - min(self._minute_requests[client_id]))
+            retry_after = 60 - (current_time - min(self._minute_requests[client_id])) if self._minute_requests.get(client_id) else 60
             return False, {
                 "error": "Rate limit exceeded",
                 "limit": self.requests_per_minute,
@@ -50,26 +57,17 @@ class RateLimiter:
                 "retry_after": int(retry_after) + 1,
             }
 
-        if hour_count >= self.requests_per_hour:
-            retry_after = 3600 - (current_time - min(self._hour_requests[client_id]))
-            return False, {
-                "error": "Rate limit exceeded",
-                "limit": self.requests_per_hour,
-                "window": "1 hour",
-                "retry_after": int(retry_after) + 1,
-            }
-
+        self._second_requests[client_id].append(current_time)
         self._minute_requests[client_id].append(current_time)
-        self._hour_requests[client_id].append(current_time)
 
         return True, {
-            "limit": self.requests_per_minute,
-            "remaining": self.requests_per_minute - minute_count - 1,
-            "reset": int(current_time) + 60,
+            "limit": self.requests_per_second,
+            "remaining": self.requests_per_second - second_count - 1,
+            "reset": int(current_time) + 1,
         }
 
 
-rate_limiter = RateLimiter(requests_per_minute=60, requests_per_hour=1000)
+rate_limiter = RateLimiter(requests_per_second=30, requests_per_minute=1000)
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):

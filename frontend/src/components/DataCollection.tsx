@@ -3,6 +3,7 @@ import { Form, Select, Button, Card, message, Table, Tag, Badge, Space } from 'a
 import { PlayCircleOutlined, SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, PauseCircleOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import moment from 'moment';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const { Option } = Select;
 
@@ -20,34 +21,34 @@ interface TaskInfo {
   created_at: number;
   started_at?: number;
   completed_at?: number;
-  message: string;
+  message_zh: string;
+  message_en: string;
   collected_count: number;
   error_message?: string;
 }
 
 const DataCollection: React.FC = () => {
+  const { t, locale } = useLanguage();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState<Config>({ symbols: [], intervals: [] });
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
 
-  // 获取配置
   const fetchConfig = async () => {
     try {
       const response = await axios.get('http://127.0.0.1:8000/api/config');
       setConfig(response.data);
     } catch (error) {
-      message.error('获取配置失败');
+      message.error(t.collection.noDataFound);
     }
   };
 
-  // 获取任务列表
   const fetchTasks = async () => {
     try {
       const response = await axios.get('http://127.0.0.1:8000/api/tasks');
       setTasks(response.data.tasks);
     } catch (error) {
-      console.error('获取任务列表失败:', error);
+      console.error('Failed to fetch tasks:', error);
     }
   };
 
@@ -55,7 +56,6 @@ const DataCollection: React.FC = () => {
     fetchConfig();
     fetchTasks();
 
-    // 每3秒刷新一次任务列表
     const interval = setInterval(() => {
       fetchTasks();
     }, 3000);
@@ -63,6 +63,7 @@ const DataCollection: React.FC = () => {
     return () => {
       clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCollect = async (values: any) => {
@@ -78,13 +79,12 @@ const DataCollection: React.FC = () => {
 
       if (response.data.success) {
         message.success(response.data.message);
-        // 立即刷新任务列表
         fetchTasks();
       } else {
         message.warning(response.data.message);
       }
     } catch (error: any) {
-      message.error('采集失败: ' + (error.response?.data?.message || error.message));
+      message.error('Collection failed: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -93,15 +93,15 @@ const DataCollection: React.FC = () => {
   const getStatusTag = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Tag icon={<PauseCircleOutlined />} color="default">等待中</Tag>;
+        return <Tag icon={<PauseCircleOutlined />} color="default">{t.collection.pending}</Tag>;
       case 'running':
-        return <Tag icon={<SyncOutlined spin />} color="processing">执行中</Tag>;
+        return <Tag icon={<SyncOutlined spin />} color="processing">{t.collection.running}</Tag>;
       case 'completed':
-        return <Tag icon={<CheckCircleOutlined />} color="success">已完成</Tag>;
+        return <Tag icon={<CheckCircleOutlined />} color="success">{t.collection.completed}</Tag>;
       case 'failed':
-        return <Tag icon={<CloseCircleOutlined />} color="error">失败</Tag>;
+        return <Tag icon={<CloseCircleOutlined />} color="error">{t.collection.failed}</Tag>;
       case 'interrupted':
-        return <Tag icon={<CloseCircleOutlined />} color="warning">已中断</Tag>;
+        return <Tag icon={<CloseCircleOutlined />} color="warning">{t.collection.interrupted}</Tag>;
       default:
         return <Tag>{status}</Tag>;
     }
@@ -109,33 +109,33 @@ const DataCollection: React.FC = () => {
 
   const columns = [
     {
-      title: '任务ID',
+      title: t.collection.taskId,
       dataIndex: 'task_id',
       key: 'task_id',
       width: 200,
       ellipsis: true,
     },
     {
-      title: '交易对',
+      title: t.management.symbol,
       dataIndex: 'symbol',
       key: 'symbol',
       width: 100,
     },
     {
-      title: 'K线间隔',
+      title: t.management.interval,
       dataIndex: 'interval',
       key: 'interval',
       width: 80,
     },
     {
-      title: '状态',
+      title: t.collection.status,
       dataIndex: 'status',
       key: 'status',
       width: 100,
       render: (status: string) => getStatusTag(status),
     },
     {
-      title: '采集数量',
+      title: t.collection.collectedCount,
       dataIndex: 'collected_count',
       key: 'collected_count',
       width: 120,
@@ -148,20 +148,20 @@ const DataCollection: React.FC = () => {
       ),
     },
     {
-      title: '消息',
-      dataIndex: 'message',
+      title: t.collection.message,
+      dataIndex: locale === 'zh-CN' ? 'message_zh' : 'message_en',
       key: 'message',
       ellipsis: true,
     },
     {
-      title: '创建时间',
+      title: t.collection.createdAt,
       dataIndex: 'created_at',
       key: 'created_at',
       width: 180,
       render: (timestamp: number) => moment(timestamp * 1000).format('YYYY-MM-DD HH:mm:ss'),
     },
     {
-      title: '完成时间',
+      title: t.collection.duration,
       dataIndex: 'completed_at',
       key: 'completed_at',
       width: 180,
@@ -171,7 +171,7 @@ const DataCollection: React.FC = () => {
 
   return (
     <div className="data-collection">
-      <Card title="K线数据采集" className="collection-card">
+      <Card title={t.collection.title} className="collection-card">
         <Form
           form={form}
           layout="vertical"
@@ -180,13 +180,13 @@ const DataCollection: React.FC = () => {
         >
           <div className="form-row">
             <Form.Item
-              label="交易对"
+              label={t.management.symbol}
               name="symbol"
-              rules={[{ required: true, message: '请选择交易对' }]}
+              rules={[{ required: true, message: t.collection.selectSymbol }]}
             >
               <Select
                 showSearch
-                placeholder="选择交易对"
+                placeholder={t.collection.selectSymbol}
                 style={{ width: 160 }}
                 filterOption={(input, option) =>
                   (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
@@ -201,11 +201,11 @@ const DataCollection: React.FC = () => {
             </Form.Item>
 
             <Form.Item
-              label="K线间隔"
+              label={t.management.interval}
               name="interval"
-              rules={[{ required: true, message: '请选择K线间隔' }]}
+              rules={[{ required: true, message: t.collection.selectInterval }]}
             >
-              <Select placeholder="选择K线间隔" style={{ width: 120 }}>
+              <Select placeholder={t.collection.selectInterval} style={{ width: 120 }}>
                 {config.intervals.map((interval) => (
                   <Option key={interval} value={interval}>
                     {interval}
@@ -221,7 +221,7 @@ const DataCollection: React.FC = () => {
                 icon={<PlayCircleOutlined />}
                 loading={loading}
               >
-                开始采集
+                {t.collection.startCollect}
               </Button>
             </Form.Item>
           </div>
@@ -232,13 +232,13 @@ const DataCollection: React.FC = () => {
         className="tasks-card"
         title={
           <Space>
-            <span>采集任务列表</span>
+            <span>{t.collection.taskList}</span>
             <SyncOutlined
               spin={tasks.some(t => t.status === 'running')}
               style={{ color: '#6366f1' }}
             />
             {tasks.some(t => t.status === 'running') && (
-              <Badge status="processing" text={<span style={{ fontSize: 12, color: '#64748b' }}>有任务正在执行</span>} />
+              <Badge status="processing" text={<span style={{ fontSize: 12, color: '#64748b' }}>{t.collection.running}</span>} />
             )}
           </Space>
         }
@@ -248,7 +248,7 @@ const DataCollection: React.FC = () => {
             onClick={fetchTasks}
             size="small"
           >
-            刷新
+            {t.collection.refresh}
           </Button>
         }
       >

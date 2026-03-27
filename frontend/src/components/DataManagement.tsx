@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, Table, Tag, Button, message, Space, Select } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const { Option } = Select;
 
@@ -19,6 +20,7 @@ interface ConfigData {
 }
 
 const DataManagement: React.FC = () => {
+  const { t } = useLanguage();
   const [data, setData] = useState<KlineDataInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
@@ -28,7 +30,6 @@ const DataManagement: React.FC = () => {
 
   useEffect(() => {
     fetchConfig();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchConfig = async () => {
@@ -37,7 +38,7 @@ const DataManagement: React.FC = () => {
       const response = await axios.get('http://127.0.0.1:8000/api/config');
       setConfig(response.data);
     } catch (error: any) {
-      message.error('获取配置失败: ' + (error.response?.data?.message || error.message));
+      message.error('Failed to load config: ' + (error.response?.data?.message || error.message));
     } finally {
       setConfigLoading(false);
     }
@@ -49,11 +50,11 @@ const DataManagement: React.FC = () => {
       const params: any = {};
       if (filterSymbol) params.symbol = filterSymbol;
       if (filterInterval) params.interval = filterInterval;
-      
+
       const response = await axios.get('http://127.0.0.1:8000/api/kline/info', { params });
       setData(response.data.data);
     } catch (error: any) {
-      message.error('获取数据失败: ' + (error.response?.data?.message || error.message));
+      message.error('Failed to load data: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -61,36 +62,36 @@ const DataManagement: React.FC = () => {
 
   const formatTime = (timestamp: number | null) => {
     if (!timestamp) return '-';
-    return new Date(timestamp).toLocaleString('zh-CN');
+    return new Date(timestamp).toLocaleString();
   };
 
   const columns = [
     {
-      title: '交易对',
+      title: t.management.symbol,
       dataIndex: 'symbol',
       key: 'symbol',
       render: (text: string) => <Tag color="blue">{text}</Tag>,
     },
     {
-      title: 'K线间隔',
+      title: t.management.interval,
       dataIndex: 'interval',
       key: 'interval',
       render: (text: string) => <Tag color="green">{text}</Tag>,
     },
     {
-      title: '数据条数',
+      title: t.management.records,
       dataIndex: 'total_count',
       key: 'total_count',
       render: (text: number) => text.toLocaleString(),
     },
     {
-      title: '最早时间',
+      title: t.management.startTime,
       dataIndex: 'earliest_time',
       key: 'earliest_time',
       render: (text: number | null) => formatTime(text),
     },
     {
-      title: '最晚时间',
+      title: t.management.endTime,
       dataIndex: 'latest_time',
       key: 'latest_time',
       render: (text: number | null) => formatTime(text),
@@ -100,19 +101,19 @@ const DataManagement: React.FC = () => {
   return (
     <Card
       className="data-management-card"
-      title="K线数据管理"
+      title={t.management.title}
       bordered={false}
       loading={configLoading}
       extra={
         <Button type="primary" onClick={fetchData} loading={loading} icon={<SyncOutlined />}>
-          刷新
+          {t.management.refresh}
         </Button>
       }
     >
       <Space direction="vertical" size="middle" style={{ width: '100%' }} className="filter-section">
         <Space wrap>
           <Select
-            placeholder="筛选交易对"
+            placeholder={t.management.filterSymbol}
             value={filterSymbol}
             onChange={(value) => setFilterSymbol(value)}
             style={{ width: 160 }}
@@ -123,7 +124,7 @@ const DataManagement: React.FC = () => {
             ))}
           </Select>
           <Select
-            placeholder="筛选K线间隔"
+            placeholder={t.management.filterInterval}
             value={filterInterval}
             onChange={(value) => setFilterInterval(value)}
             style={{ width: 140 }}
@@ -133,8 +134,8 @@ const DataManagement: React.FC = () => {
               <Option key={interval} value={interval}>{interval}</Option>
             ))}
           </Select>
-          <Button onClick={fetchData}>查询</Button>
-          <Button onClick={() => { setFilterSymbol(undefined); setFilterInterval(undefined); }}>重置</Button>
+          <Button onClick={fetchData}>{t.management.query}</Button>
+          <Button onClick={() => { setFilterSymbol(undefined); setFilterInterval(undefined); }}>{t.management.reset}</Button>
         </Space>
       </Space>
 
@@ -146,7 +147,7 @@ const DataManagement: React.FC = () => {
         pagination={{
           pageSize: 10,
           showSizeChanger: true,
-          showTotal: (total) => `共 ${total} 条记录`,
+          showTotal: (total) => t.management.total.replace('{total}', String(total)),
         }}
         className="data-table"
       />
