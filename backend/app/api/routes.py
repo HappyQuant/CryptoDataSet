@@ -1,19 +1,20 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List, Dict, Any
-import time
-import json
+from typing import Optional, List
+import asyncio
 
-from app.core.database import get_db
+from app.core.database import get_db, AsyncSessionLocal
 from app.schemas.kline import (
     KlineCollectionRequest,
     KlineCollectionResponse,
     KlineDataInfoResponse,
     KlineData,
     ConfigResponse,
+    TaskInfoResponse,
+    TaskListResponse,
 )
 from app.services.kline_service import kline_service
-from app.core.websocket_manager import broadcast_progress
+from app.services.task_manager import task_manager
 
 router = APIRouter()
 
@@ -58,49 +59,92 @@ async def get_config():
 @router.post("/kline/collect", response_model=KlineCollectionResponse)
 async def collect_kline_data(
     request: KlineCollectionRequest,
-    db: AsyncSession = Depends(get_db),
 ):
-    """触发K线数据采集"""
-    collection_key = f"{request.symbol}_{request.interval}"
+    """触发K线数据采集（后台异步执行）
     
-    try:
-        async def progress_callback(collected_count, current_start, end_time):
-            progress = {
-                "collected_count": collected_count,
-                "current_start": current_start,
-                "end_time": end_time,
-                "progress_percent": round((current_start / end_time) * 100, 2) if end_time > 0 else 0,
-                "current_time_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_start / 1000)),
-                "end_time_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(end_time / 1000)),
-            }
-            await broadcast_progress(collection_key, progress)
-        
-        count = await kline_service.collect_kline_data(
-            db=db,
-            symbol=request.symbol,
-            interval=request.interval,
-            start_time=request.start_time,
-            end_time=request.end_time,
-            progress_callback=progress_callback,
-        )
-        
+    同一类型的任务（同交易对+同K线区间）不允许同时执行
+    """
+    symbol = request.symbol.upper()
+    interval = request.interval
+    
+    print(f"收到采集请求: {symbol} {interval}")
+    
+    # 检查是否有同类型任务正在执行
+    if task_manager.is_task_running(symbol, interval):
+        running_task = task_manager.get_running_task_by_type(symbol, interval)
+        if running_task:
+            print(f"同类型任务正在执行: {running_task.task_id}")
+            return KlineCollectionResponse(
+                success=False,
+                message=f"同类型任务正在执行中 (任务ID: {running_task.task_id})",
+                task_id=running_task.task_id,
+            )
+    
+    # 创建新任务
+    task_info = task_manager.create_task(symbol, interval)
+    if not task_info:
+        print("创建任务失败")
         return KlineCollectionResponse(
-            success=True,
-            message=f"Successfully collected {count} kline records",
-            collected_count=count,
+            success=False,
+            message="创建任务失败，同类型任务可能正在执行",
+            task_id=None,
         )
-    except Exception as e:
-        return KlineCollectionResponse(success=False, message=str(e), collected_count=0)
+    
+    print(f"任务创建成功: {task_info.task_id}")
+    
+    # 启动后台任务
+    async def run_task():
+        print(f"后台任务开始执行: {task_info.task_id}")
+        try:
+            async with AsyncSessionLocal() as task_db:
+                await kline_service.collect_data_task(
+                    db=task_db,
+                    symbol=symbol,
+                    interval=interval,
+                    task_id=task_info.task_id,
+                )
+        except Exception as e:
+            print(f"任务执行异常: {e}")
+            import traceback
+            traceback.print_exc()
+            task_manager.fail_task(task_info.task_id, str(e))
+    
+    # 标记任务为运行中
+    task_manager.start_task(task_info.task_id)
+    
+    # 创建并启动后台任务
+    asyncio.create_task(run_task())
+    
+    print(f"任务已启动: {task_info.task_id}")
+    print("API立即返回")
+    return KlineCollectionResponse(
+        success=True,
+        message=f"任务已创建并开始执行 (任务ID: {task_info.task_id})",
+        task_id=task_info.task_id,
+    )
 
 
-@router.get("/kline/collect/status", response_model=Dict[str, Any])
-async def get_collection_status():
-    """获取采集任务状态"""
-    from app.core.websocket_manager import progress_data
-    return {
-        "active_collections": progress_data,
-        "total_active": len(progress_data),
-    }
+@router.get("/tasks", response_model=TaskListResponse)
+async def get_tasks(
+    symbol: Optional[str] = None,
+    interval: Optional[str] = None,
+):
+    """获取任务列表"""
+    tasks = task_manager.get_all_tasks(symbol, interval)
+    print(f"获取任务列表，共 {len(tasks)} 个任务")
+    for task in tasks:
+        print(f"  - {task.task_id}: {task.symbol} {task.interval} {task.status.value}")
+    return TaskListResponse(tasks=[task.to_dict() for task in tasks])
+
+
+@router.get("/tasks/{task_id}", response_model=TaskInfoResponse)
+async def get_task(task_id: str):
+    """获取单个任务状态"""
+    task_info = task_manager.get_task(task_id)
+    if not task_info:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="任务不存在")
+    return task_info.to_dict()
 
 
 @router.get("/kline/info", response_model=KlineDataInfoResponse)

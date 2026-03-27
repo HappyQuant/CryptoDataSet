@@ -1,125 +1,89 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, Form, Select, Button, DatePicker, message, Space, Progress, Typography } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Form, Select, Button, Card, message, Table, Tag, Badge, Space, Tooltip } from 'antd';
+import { PlayCircleOutlined, SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, PauseCircleOutlined } from '@ant-design/icons';
 import axios from 'axios';
-import dayjs from 'dayjs';
-
-const { Text } = Typography;
+import moment from 'moment';
 
 const { Option } = Select;
 
-interface ConfigData {
+interface Config {
   symbols: string[];
   intervals: string[];
 }
 
-interface CollectionStatus {
+interface TaskInfo {
+  task_id: string;
+  task_type: string;
+  symbol: string;
+  interval: string;
+  status: string;
+  created_at: number;
+  started_at?: number;
+  completed_at?: number;
+  message: string;
   collected_count: number;
-  current_start: number;
-  end_time: number;
-  progress_percent: number;
-  current_time_str: string;
-  end_time_str: string;
+  error_message?: string;
 }
 
 const DataCollection: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [configLoading, setConfigLoading] = useState(false);
-  const [config, setConfig] = useState<ConfigData>({ symbols: [], intervals: [] });
-  const [collectionStatus, setCollectionStatus] = useState<CollectionStatus | null>(null);
-  const [collectionKey, setCollectionKey] = useState<string | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [config, setConfig] = useState<Config>({ symbols: [], intervals: [] });
+  const [tasks, setTasks] = useState<TaskInfo[]>([]);
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    fetchConfig();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, []);
-
+  // 获取配置
   const fetchConfig = async () => {
-    setConfigLoading(true);
     try {
       const response = await axios.get('http://127.0.0.1:8000/api/config');
       setConfig(response.data);
-      if (response.data.symbols.length > 0 && response.data.intervals.length > 0) {
-        form.setFieldsValue({
-          symbol: response.data.symbols[0],
-          interval: response.data.intervals[0],
-        });
-      }
-    } catch (error: any) {
-      message.error('获取配置失败: ' + (error.response?.data?.message || error.message));
-    } finally {
-      setConfigLoading(false);
+    } catch (error) {
+      message.error('获取配置失败');
     }
   };
 
-  const fetchCollectionStatus = async () => {
+  // 获取任务列表
+  const fetchTasks = async () => {
     try {
-      const response = await axios.get('http://127.0.0.1:8000/api/kline/collect/status');
-      
-      if (response.data.total_active > 0) {
-        const activeCollections = response.data.active_collections;
-        
-        for (const key in activeCollections) {
-          if (activeCollections.hasOwnProperty(key)) {
-            setCollectionKey(key);
-            setCollectionStatus(activeCollections[key]);
-          }
-        }
-      } else {
-        setCollectionKey(null);
-        setCollectionStatus(null);
-      }
-    } catch (error: any) {
-      console.error('获取采集状态失败:', error);
+      const response = await axios.get('http://127.0.0.1:8000/api/tasks');
+      setTasks(response.data.tasks);
+    } catch (error) {
+      console.error('获取任务列表失败:', error);
     }
   };
 
   useEffect(() => {
-    if (collectionKey) {
-      intervalRef.current = setInterval(fetchCollectionStatus, 2000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    }
-    
+    fetchConfig();
+    fetchTasks();
+
+    // 每3秒刷新一次任务列表
+    const interval = setInterval(() => {
+      fetchTasks();
+    }, 3000);
+    setRefreshInterval(interval);
+
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      clearInterval(interval);
     };
-  }, [collectionKey]);
+  }, []);
 
   const handleCollect = async (values: any) => {
     setLoading(true);
-    setCollectionStatus(null);
-    setCollectionKey(null);
-    
+
     try {
       const requestData = {
         symbol: values.symbol.toUpperCase(),
         interval: values.interval,
-        start_time: values.start_time ? dayjs(values.start_time).valueOf() : undefined,
-        end_time: values.end_time ? dayjs(values.end_time).valueOf() : undefined,
       };
 
       const response = await axios.post('http://127.0.0.1:8000/api/kline/collect', requestData);
-      
+
       if (response.data.success) {
         message.success(response.data.message);
-        setCollectionStatus(null);
-        setCollectionKey(null);
+        // 立即刷新任务列表
+        fetchTasks();
       } else {
-        message.error(response.data.message);
+        message.warning(response.data.message);
       }
     } catch (error: any) {
       message.error('采集失败: ' + (error.response?.data?.message || error.message));
@@ -128,132 +92,183 @@ const DataCollection: React.FC = () => {
     }
   };
 
-  const formatTime = (timestamp: number) => {
-    return dayjs(timestamp).format('YYYY-MM-DD HH:mm:ss');
+  const getStatusTag = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Tag icon={<PauseCircleOutlined />} color="default">等待中</Tag>;
+      case 'running':
+        return <Tag icon={<SyncOutlined spin />} color="processing">执行中</Tag>;
+      case 'completed':
+        return <Tag icon={<CheckCircleOutlined />} color="success">已完成</Tag>;
+      case 'failed':
+        return <Tag icon={<CloseCircleOutlined />} color="error">失败</Tag>;
+      case 'interrupted':
+        return <Tag icon={<CloseCircleOutlined />} color="warning">已中断</Tag>;
+      default:
+        return <Tag>{status}</Tag>;
+    }
+  };
+
+  const columns = [
+    {
+      title: '任务ID',
+      dataIndex: 'task_id',
+      key: 'task_id',
+      width: 200,
+      ellipsis: true,
+    },
+    {
+      title: '交易对',
+      dataIndex: 'symbol',
+      key: 'symbol',
+      width: 100,
+    },
+    {
+      title: 'K线间隔',
+      dataIndex: 'interval',
+      key: 'interval',
+      width: 80,
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (status: string) => getStatusTag(status),
+    },
+    {
+      title: '采集数量',
+      dataIndex: 'collected_count',
+      key: 'collected_count',
+      width: 100,
+      render: (count: number, record: TaskInfo) => (
+        record.status === 'running' ? (
+          <Badge count={count} showZero style={{ backgroundColor: '#1890ff' }} />
+        ) : (
+          count
+        )
+      ),
+    },
+    {
+      title: '消息',
+      dataIndex: 'message',
+      key: 'message',
+      ellipsis: true,
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 180,
+      render: (timestamp: number) => moment(timestamp * 1000).format('YYYY-MM-DD HH:mm:ss'),
+    },
+    {
+      title: '完成时间',
+      dataIndex: 'completed_at',
+      key: 'completed_at',
+      width: 180,
+      render: (timestamp: number) => timestamp ? moment(timestamp * 1000).format('YYYY-MM-DD HH:mm:ss') : '-',
+    },
+  ];
+
+  // 检查是否有正在运行的任务
+  const hasRunningTask = (symbol: string, interval: string) => {
+    return tasks.some(
+      task => task.symbol === symbol.toUpperCase() &&
+              task.interval === interval &&
+              task.status === 'running'
+    );
   };
 
   return (
-    <Card title="K线数据采集" bordered={false} loading={configLoading}>
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleCollect}
-      >
-        <Form.Item
-          label="交易对"
-          name="symbol"
-          rules={[{ required: true, message: '请选择交易对' }]}
+    <div>
+      <Card title="K线数据采集" style={{ marginBottom: 16 }}>
+        <Form
+          form={form}
+          layout="inline"
+          onFinish={handleCollect}
         >
-          <Select placeholder="选择交易对">
-            {config.symbols.map(symbol => (
-              <Option key={symbol} value={symbol}>{symbol}</Option>
-            ))}
-          </Select>
-        </Form.Item>
+          <Form.Item
+            label="交易对"
+            name="symbol"
+            rules={[{ required: true, message: '请选择交易对' }]}
+          >
+            <Select
+              showSearch
+              placeholder="选择交易对"
+              style={{ width: 150 }}
+              filterOption={(input, option) =>
+                (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+              }
+            >
+              {config.symbols.map((symbol) => (
+                <Option key={symbol} value={symbol}>
+                  {symbol}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
 
-        <Form.Item
-          label="K线间隔"
-          name="interval"
-          rules={[{ required: true, message: '请选择K线间隔' }]}
-        >
-          <Select placeholder="选择K线间隔">
-            {config.intervals.map(interval => (
-              <Option key={interval} value={interval}>{interval}</Option>
-            ))}
-          </Select>
-        </Form.Item>
+          <Form.Item
+            label="K线间隔"
+            name="interval"
+            rules={[{ required: true, message: '请选择K线间隔' }]}
+          >
+            <Select placeholder="选择K线间隔" style={{ width: 100 }}>
+              {config.intervals.map((interval) => (
+                <Option key={interval} value={interval}>
+                  {interval}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
 
-        <Form.Item
-          label="开始时间"
-          name="start_time"
-        >
-          <DatePicker
-            showTime
-            style={{ width: '100%' }}
-            placeholder="选择开始时间（可选）"
-          />
-        </Form.Item>
-
-        <Form.Item
-          label="结束时间"
-          name="end_time"
-        >
-          <DatePicker
-            showTime
-            style={{ width: '100%' }}
-            placeholder="选择结束时间（可选，默认为当前时间）"
-          />
-        </Form.Item>
-
-        <Form.Item>
-          <Space>
-            <Button type="primary" htmlType="submit" loading={loading} disabled={!!collectionKey}>
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<PlayCircleOutlined />}
+              loading={loading}
+            >
               开始采集
             </Button>
-            <Button onClick={() => form.resetFields()}>
-              重置
-            </Button>
-          </Space>
-        </Form.Item>
-      </Form>
+          </Form.Item>
+        </Form>
+      </Card>
 
-      {collectionKey && collectionStatus && (
-        <div style={{ marginTop: 24, padding: 16, background: '#e6f7ff', border: '1px solid #91d5ff', borderRadius: 4 }}>
-          <Typography>
-            <Text strong>采集任务进行中</Text>
-            <Text type="secondary" style={{ marginLeft: 16 }}>
-              {collectionKey}
-            </Text>
-          </Typography>
-          
-          <div style={{ marginTop: 16 }}>
-            <Progress 
-              percent={collectionStatus.progress_percent} 
-              status="active"
-              strokeColor={{
-                '0%': '#108ee9',
-                '100%': '#87d068',
-              }}
+      <Card
+        title={
+          <Space>
+            <span>采集任务列表</span>
+            <SyncOutlined
+              spin={tasks.some(t => t.status === 'running')}
+              style={{ color: '#1890ff' }}
             />
-          </div>
-          
-          <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <Text strong>已采集:</Text>
-              <Text>{collectionStatus.collected_count} 条</Text>
-            </div>
-            <div>
-              <Text strong>当前进度:</Text>
-              <Text>{formatTime(collectionStatus.current_start)}</Text>
-            </div>
-            <div>
-              <Text strong>目标时间:</Text>
-              <Text>{formatTime(collectionStatus.end_time)}</Text>
-            </div>
-            <div>
-              <Text strong>进度百分比:</Text>
-              <Text>{collectionStatus.progress_percent}%</Text>
-            </div>
-          </div>
-          
-          <div style={{ marginTop: 8 }}>
-            <Text type="secondary">每2秒自动刷新进度</Text>
-          </div>
-        </div>
-      )}
-
-      <div style={{ marginTop: 24, padding: 16, background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 4 }}>
-        <h4>使用说明：</h4>
-        <ul>
-          <li>从下拉列表中选择交易对</li>
-          <li>从下拉列表中选择K线间隔</li>
-          <li>可选设置开始和结束时间，不设置则采集到最新数据</li>
-          <li>系统会自动从Binance获取数据并入库</li>
-          <li>重复采集不会导致数据重复</li>
-          <li>采集任务进行中会显示实时进度，再次点击会提示任务已在进行</li>
-        </ul>
-      </div>
-    </Card>
+            {tasks.some(t => t.status === 'running') && (
+              <Badge status="processing" text="有任务正在执行" />
+            )}
+          </Space>
+        }
+        extra={
+          <Button
+            icon={<SyncOutlined />}
+            onClick={fetchTasks}
+            size="small"
+          >
+            刷新
+          </Button>
+        }
+      >
+        <Table
+          columns={columns}
+          dataSource={tasks}
+          rowKey="task_id"
+          pagination={{ pageSize: 10 }}
+          size="small"
+          scroll={{ x: 1200 }}
+        />
+      </Card>
+    </div>
   );
 };
 
