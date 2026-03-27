@@ -339,206 +339,354 @@ const KlineChart: React.FC = () => {
   const setupIndicatorChart = useCallback((indicator: IndicatorType) => {
     if (!indicatorChartContainerRef.current) return;
 
-    if (indicatorChartRef.current) {
-      try {
-        indicatorChartRef.current.remove();
-      } catch (e) {
-        console.warn('指标图表移除失败:', e);
+    // 只有在图表未初始化时才创建
+    if (!indicatorChartRef.current) {
+      const chartOptions = {
+        layout: { background: { color: '#1a1a1a' }, textColor: '#d1d4dc' },
+        grid: { vertLines: { color: '#2a2a2a' }, horzLines: { color: '#2a2a2a' } },
+        crosshair: { mode: 0 },
+        timeScale: { borderColor: '#2a2a2a', timeVisible: true, secondsVisible: false },
+        rightPriceScale: { borderColor: '#2a2a2a' },
+      };
+
+      const indChart = createChart(indicatorChartContainerRef.current, {
+        ...chartOptions,
+        width: indicatorChartContainerRef.current.clientWidth,
+        height: 120,
+      });
+
+      indicatorChartRef.current = indChart;
+
+      let series1: ISeriesApi<'Histogram' | 'Line'>;
+      let series2: ISeriesApi<'Line'> | null = null;
+      let series3: ISeriesApi<'Line'> | null = null;
+
+      if (indicator === 'VOL') {
+        series1 = indChart.addSeries(HistogramSeries, { priceScaleId: 'right', priceFormat: { type: 'volume' } });
+        indChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
+      } else if (['RSI', 'CCI', 'WR', 'ATR', 'ADX', 'MFI', 'Stoch', 'SAR', 'OBV'].includes(indicator)) {
+        series1 = indChart.addSeries(LineSeries, { color: '#FF6B6B', lineWidth: 1, priceLineVisible: false }) as ISeriesApi<'Line'>;
+        indChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
+      } else if (indicator === 'MACD') {
+        series1 = indChart.addSeries(HistogramSeries, { priceScaleId: 'right' });
+        indChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
+        series2 = indChart.addSeries(LineSeries, { color: '#2196F3', lineWidth: 1, priceLineVisible: false });
+      } else if (indicator === 'KDJ') {
+        series1 = indChart.addSeries(LineSeries, { color: '#FF6B6B', lineWidth: 1, priceLineVisible: false }) as ISeriesApi<'Line'>;
+        indChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
+        series2 = indChart.addSeries(LineSeries, { color: '#4ECDC4', lineWidth: 1, priceLineVisible: false });
+      } else if (indicator === 'BOLL') {
+        series1 = indChart.addSeries(LineSeries, { color: '#FF6B6B', lineWidth: 1, priceLineVisible: false }) as ISeriesApi<'Line'>;
+        indChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
+        series2 = indChart.addSeries(LineSeries, { color: '#4ECDC4', lineWidth: 1, priceLineVisible: false });
+      } else {
+        series1 = indChart.addSeries(HistogramSeries, { priceScaleId: 'right' }) as ISeriesApi<'Histogram'>;
+        indChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
       }
-      indicatorChartRef.current = null;
-      if (indicatorChartContainerRef.current) {
-        indicatorChartContainerRef.current.innerHTML = '';
+
+      indicatorSeries1Ref.current = series1;
+      indicatorSeries2Ref.current = series2;
+      indicatorSeries3Ref.current = series3;
+
+      const mainChart = mainChartRef.current;
+      if (mainChart) {
+        mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (range && indicatorChartRef.current) {
+            try {
+              indicatorChartRef.current.timeScale().setVisibleLogicalRange(range);
+            } catch (e) {
+              console.warn('设置指标图表时间范围失败:', e);
+            }
+          }
+        });
+        indChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (range && mainChartRef.current) {
+            try {
+              mainChartRef.current.timeScale().setVisibleLogicalRange(range);
+            } catch (e) {
+              console.warn('设置主图表时间范围失败:', e);
+            }
+          }
+        });
       }
-    }
-
-    const chartOptions = {
-      layout: { background: { color: '#1a1a1a' }, textColor: '#d1d4dc' },
-      grid: { vertLines: { color: '#2a2a2a' }, horzLines: { color: '#2a2a2a' } },
-      crosshair: { mode: 0 },
-      timeScale: { borderColor: '#2a2a2a', timeVisible: true, secondsVisible: false },
-      rightPriceScale: { borderColor: '#2a2a2a' },
-    };
-
-    const indChart = createChart(indicatorChartContainerRef.current, {
-      ...chartOptions,
-      width: indicatorChartContainerRef.current.clientWidth,
-      height: 120,
-    });
-
-    indicatorChartRef.current = indChart;
-
-    let series1: ISeriesApi<'Histogram' | 'Line'>;
-    let series2: ISeriesApi<'Line'> | null = null;
-    let series3: ISeriesApi<'Line'> | null = null;
-
-    if (indicator === 'VOL') {
-      series1 = indChart.addSeries(HistogramSeries, { priceScaleId: 'right', priceFormat: { type: 'volume' } });
-      indChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
-    } else if (['RSI', 'CCI', 'WR', 'ATR', 'ADX', 'MFI', 'Stoch', 'SAR', 'OBV'].includes(indicator)) {
-      series1 = indChart.addSeries(LineSeries, { color: '#FF6B6B', lineWidth: 1, priceLineVisible: false }) as ISeriesApi<'Line'>;
-      indChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
-    } else if (indicator === 'MACD') {
-      series1 = indChart.addSeries(HistogramSeries, { priceScaleId: 'right' });
-      indChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
-      series2 = indChart.addSeries(LineSeries, { color: '#2196F3', lineWidth: 1, priceLineVisible: false });
-    } else if (indicator === 'KDJ') {
-      series1 = indChart.addSeries(LineSeries, { color: '#FF6B6B', lineWidth: 1, priceLineVisible: false }) as ISeriesApi<'Line'>;
-      indChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
-      series2 = indChart.addSeries(LineSeries, { color: '#4ECDC4', lineWidth: 1, priceLineVisible: false });
-    } else if (indicator === 'BOLL') {
-      series1 = indChart.addSeries(LineSeries, { color: '#FF6B6B', lineWidth: 1, priceLineVisible: false }) as ISeriesApi<'Line'>;
-      indChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
-      series2 = indChart.addSeries(LineSeries, { color: '#4ECDC4', lineWidth: 1, priceLineVisible: false });
     } else {
-      series1 = indChart.addSeries(HistogramSeries, { priceScaleId: 'right' }) as ISeriesApi<'Histogram'>;
-      indChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
-    }
+      // 图表已存在，只需要更新数据
+      if (klineDataRef.current.length > 0) {
+        // 直接调用更新逻辑，避免循环依赖
+        if (candlestickSeriesRef.current && mainChartRef.current) {
+          const chartData = convertToChartData(klineDataRef.current);
+          candlestickSeriesRef.current.setData(chartData);
 
-    indicatorSeries1Ref.current = series1;
-    indicatorSeries2Ref.current = series2;
-    indicatorSeries3Ref.current = series3;
+          const { ma5, ma10, ma20, ma60 } = calculateMovingAverages(klineDataRef.current);
+          ma5SeriesRef.current?.setData(ma5);
+          ma10SeriesRef.current?.setData(ma10);
+          ma20SeriesRef.current?.setData(ma20);
+          ma60SeriesRef.current?.setData(ma60);
 
-    const mainChart = mainChartRef.current;
-    if (mainChart) {
-      mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-        if (range) indChart.timeScale().setVisibleLogicalRange(range);
-      });
-      indChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-        if (range) mainChart.timeScale().setVisibleLogicalRange(range);
-      });
+          const closes = klineDataRef.current.map(item => parseFloat(item.close_price));
+          const ohlc = klineDataRef.current.map(item => ({ high: parseFloat(item.high_price), low: parseFloat(item.low_price), close: parseFloat(item.close_price), volume: parseFloat(item.base_volume) }));
+          const times = klineDataRef.current.map(item => (item.open_time / 1000) as Time);
+
+          if (indicatorSeries1Ref.current && indicatorChartRef.current) {
+            switch (indicator) {
+              case 'VOL': {
+                const volumeData = convertToVolumeData(klineDataRef.current);
+                (indicatorSeries1Ref.current as ISeriesApi<'Histogram'>).setData(volumeData);
+                break;
+              }
+              case 'MACD': {
+                const ema12 = calculateEMA(closes, 12);
+                const ema26 = calculateEMA(closes, 26);
+                const macdLine: (number | null)[] = ema12.map((v, i) => (v !== null && ema26[i] !== null ? v - ema26[i]! : null));
+                const signalLine = calculateEMA(macdLine.filter(v => v !== null) as number[], 9);
+                const histogram: HistogramData<Time>[] = [];
+                let signalIdx = 0;
+                for (let i = 0; i < klineDataRef.current.length; i++) {
+                  if (macdLine[i] !== null) {
+                    const histValue = macdLine[i]! - (signalLine[signalIdx] ?? 0);
+                    histogram.push({ time: times[i], value: histValue, color: histValue >= 0 ? '#26a69a' : '#ef5350' });
+                    signalIdx++;
+                  }
+                }
+                (indicatorSeries1Ref.current as ISeriesApi<'Histogram'>).setData(histogram);
+                if (indicatorSeries2Ref.current) {
+                  const macdSignalData: LineData<Time>[] = [];
+                  let sigIdx = 0;
+                  for (let i = 0; i < klineDataRef.current.length; i++) {
+                    if (macdLine[i] !== null && signalLine[sigIdx] !== undefined) {
+                      macdSignalData.push({ time: times[i], value: signalLine[sigIdx] ?? 0 });
+                      sigIdx++;
+                    }
+                  }
+                  indicatorSeries2Ref.current.setData(macdSignalData);
+                }
+                break;
+              }
+              case 'RSI': {
+                const rsi = calculateRSI(closes, 14);
+                const rsiData: LineData<Time>[] = [];
+                for (let i = 0; i < klineDataRef.current.length; i++) { if (rsi[i] !== null) rsiData.push({ time: times[i], value: rsi[i]! }); }
+                (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(rsiData);
+                break;
+              }
+              case 'KDJ': {
+                const kdj = calculateKDJ(ohlc, 9);
+                const kData: LineData<Time>[] = [];
+                const dData: LineData<Time>[] = [];
+                for (let i = 0; i < klineDataRef.current.length; i++) { if (kdj.k[i] !== null) { kData.push({ time: times[i], value: kdj.k[i]! }); dData.push({ time: times[i], value: kdj.d[i]! }); } }
+                (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(kData);
+                if (indicatorSeries2Ref.current) indicatorSeries2Ref.current.setData(dData);
+                break;
+              }
+              case 'BOLL': {
+                const boll = calculateBOLL(closes, 20);
+                const upperData: LineData<Time>[] = [];
+                const lowerData: LineData<Time>[] = [];
+                for (let i = 0; i < klineDataRef.current.length; i++) { if (boll.upper[i] !== null) { upperData.push({ time: times[i], value: boll.upper[i]! }); lowerData.push({ time: times[i], value: boll.lower[i]! }); } }
+                (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(upperData);
+                if (indicatorSeries2Ref.current) indicatorSeries2Ref.current.setData(lowerData);
+                break;
+              }
+              case 'CCI': {
+                const cci = calculateCCI(ohlc, 14);
+                const cciData: LineData<Time>[] = [];
+                for (let i = 0; i < klineDataRef.current.length; i++) { if (cci[i] !== null) cciData.push({ time: times[i], value: cci[i]! }); }
+                (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(cciData);
+                break;
+              }
+              case 'WR': {
+                const wr = calculateWR(ohlc, 14);
+                const wrData: LineData<Time>[] = [];
+                for (let i = 0; i < klineDataRef.current.length; i++) { if (wr[i] !== null) wrData.push({ time: times[i], value: wr[i]! }); }
+                (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(wrData);
+                break;
+              }
+              case 'ATR': {
+                const atr = calculateATR(ohlc, 14);
+                const atrData: LineData<Time>[] = [];
+                for (let i = 0; i < klineDataRef.current.length; i++) { if (atr[i] !== null) atrData.push({ time: times[i], value: atr[i]! }); }
+                (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(atrData);
+                break;
+              }
+              case 'SAR': {
+                const sar = calculateSAR(ohlc);
+                const sarData: LineData<Time>[] = [];
+                for (let i = 0; i < klineDataRef.current.length; i++) { if (sar[i] !== null) sarData.push({ time: times[i], value: sar[i]! }); }
+                (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(sarData);
+                break;
+              }
+              case 'OBV': {
+                const obv = calculateOBV(ohlc);
+                const obvData: LineData<Time>[] = [];
+                for (let i = 0; i < klineDataRef.current.length; i++) { if (obv[i] !== null) obvData.push({ time: times[i], value: obv[i]! }); }
+                (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(obvData);
+                break;
+              }
+              case 'MFI': {
+                const mfi = calculateMFI(ohlc, 14);
+                const mfiData: LineData<Time>[] = [];
+                for (let i = 0; i < klineDataRef.current.length; i++) { if (mfi[i] !== null) mfiData.push({ time: times[i], value: mfi[i]! }); }
+                (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(mfiData);
+                break;
+              }
+              case 'Stoch': {
+                const stoch = calculateStoch(ohlc, 14, 3);
+                const kData: LineData<Time>[] = [];
+                const dData: LineData<Time>[] = [];
+                for (let i = 0; i < klineDataRef.current.length; i++) { if (stoch.k[i] !== null) { kData.push({ time: times[i], value: stoch.k[i]! }); dData.push({ time: times[i], value: stoch.d[i]! }); } }
+                (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(kData);
+                if (indicatorSeries2Ref.current) indicatorSeries2Ref.current.setData(dData);
+                break;
+              }
+            }
+            
+            if (indicatorChartRef.current) {
+              indicatorChartRef.current.timeScale().fitContent();
+            }
+          }
+        }
+      }
     }
   }, []);
 
   const updateIndicators = useCallback((klineData: KlineDataItem[], indicator: IndicatorType) => {
-    if (!candlestickSeriesRef.current || klineData.length === 0) return;
+    // 防御性检查：确保图表和系列都存在
+    if (!candlestickSeriesRef.current || !mainChartRef.current || klineData.length === 0) return;
 
-    const chartData = convertToChartData(klineData);
-    candlestickSeriesRef.current.setData(chartData);
+    try {
+      const chartData = convertToChartData(klineData);
+      candlestickSeriesRef.current.setData(chartData);
 
-    const { ma5, ma10, ma20, ma60 } = calculateMovingAverages(klineData);
-    ma5SeriesRef.current?.setData(ma5);
-    ma10SeriesRef.current?.setData(ma10);
-    ma20SeriesRef.current?.setData(ma20);
-    ma60SeriesRef.current?.setData(ma60);
+      const { ma5, ma10, ma20, ma60 } = calculateMovingAverages(klineData);
+      ma5SeriesRef.current?.setData(ma5);
+      ma10SeriesRef.current?.setData(ma10);
+      ma20SeriesRef.current?.setData(ma20);
+      ma60SeriesRef.current?.setData(ma60);
 
-    const closes = klineData.map(item => parseFloat(item.close_price));
-    const ohlc = klineData.map(item => ({ high: parseFloat(item.high_price), low: parseFloat(item.low_price), close: parseFloat(item.close_price), volume: parseFloat(item.base_volume) }));
-    const times = klineData.map(item => (item.open_time / 1000) as Time);
+      const closes = klineData.map(item => parseFloat(item.close_price));
+      const ohlc = klineData.map(item => ({ high: parseFloat(item.high_price), low: parseFloat(item.low_price), close: parseFloat(item.close_price), volume: parseFloat(item.base_volume) }));
+      const times = klineData.map(item => (item.open_time / 1000) as Time);
 
-    if (!indicatorSeries1Ref.current || !indicatorChartRef.current) return;
+      if (!indicatorSeries1Ref.current || !indicatorChartRef.current) return;
 
-    switch (indicator) {
-      case 'VOL': {
-        const volumeData = convertToVolumeData(klineData);
-        (indicatorSeries1Ref.current as ISeriesApi<'Histogram'>).setData(volumeData);
-        break;
-      }
-      case 'MACD': {
-        const ema12 = calculateEMA(closes, 12);
-        const ema26 = calculateEMA(closes, 26);
-        const macdLine: (number | null)[] = ema12.map((v, i) => (v !== null && ema26[i] !== null ? v - ema26[i]! : null));
-        const signalLine = calculateEMA(macdLine.filter(v => v !== null) as number[], 9);
-        const histogram: HistogramData<Time>[] = [];
-        let signalIdx = 0;
-        for (let i = 0; i < klineData.length; i++) {
-          if (macdLine[i] !== null) {
-            const histValue = macdLine[i]! - (signalLine[signalIdx] ?? 0);
-            histogram.push({ time: times[i], value: histValue, color: histValue >= 0 ? '#26a69a' : '#ef5350' });
-            signalIdx++;
-          }
+      switch (indicator) {
+        case 'VOL': {
+          const volumeData = convertToVolumeData(klineData);
+          (indicatorSeries1Ref.current as ISeriesApi<'Histogram'>).setData(volumeData);
+          break;
         }
-        (indicatorSeries1Ref.current as ISeriesApi<'Histogram'>).setData(histogram);
-        if (indicatorSeries2Ref.current) {
-          const macdSignalData: LineData<Time>[] = [];
-          let sigIdx = 0;
+        case 'MACD': {
+          const ema12 = calculateEMA(closes, 12);
+          const ema26 = calculateEMA(closes, 26);
+          const macdLine: (number | null)[] = ema12.map((v, i) => (v !== null && ema26[i] !== null ? v - ema26[i]! : null));
+          const signalLine = calculateEMA(macdLine.filter(v => v !== null) as number[], 9);
+          const histogram: HistogramData<Time>[] = [];
+          let signalIdx = 0;
           for (let i = 0; i < klineData.length; i++) {
-            if (macdLine[i] !== null && signalLine[sigIdx] !== undefined) {
-              macdSignalData.push({ time: times[i], value: signalLine[sigIdx] ?? 0 });
-              sigIdx++;
+            if (macdLine[i] !== null) {
+              const histValue = macdLine[i]! - (signalLine[signalIdx] ?? 0);
+              histogram.push({ time: times[i], value: histValue, color: histValue >= 0 ? '#26a69a' : '#ef5350' });
+              signalIdx++;
             }
           }
-          indicatorSeries2Ref.current.setData(macdSignalData);
+          (indicatorSeries1Ref.current as ISeriesApi<'Histogram'>).setData(histogram);
+          if (indicatorSeries2Ref.current) {
+            const macdSignalData: LineData<Time>[] = [];
+            let sigIdx = 0;
+            for (let i = 0; i < klineData.length; i++) {
+              if (macdLine[i] !== null && signalLine[sigIdx] !== undefined) {
+                macdSignalData.push({ time: times[i], value: signalLine[sigIdx] ?? 0 });
+                sigIdx++;
+              }
+            }
+            indicatorSeries2Ref.current.setData(macdSignalData);
+          }
+          break;
         }
-        break;
+        case 'RSI': {
+          const rsi = calculateRSI(closes, 14);
+          const rsiData: LineData<Time>[] = [];
+          for (let i = 0; i < klineData.length; i++) { if (rsi[i] !== null) rsiData.push({ time: times[i], value: rsi[i]! }); }
+          (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(rsiData);
+          break;
+        }
+        case 'KDJ': {
+          const kdj = calculateKDJ(ohlc, 9);
+          const kData: LineData<Time>[] = [];
+          const dData: LineData<Time>[] = [];
+          for (let i = 0; i < klineData.length; i++) { if (kdj.k[i] !== null) { kData.push({ time: times[i], value: kdj.k[i]! }); dData.push({ time: times[i], value: kdj.d[i]! }); } }
+          (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(kData);
+          if (indicatorSeries2Ref.current) indicatorSeries2Ref.current.setData(dData);
+          break;
+        }
+        case 'BOLL': {
+          const boll = calculateBOLL(closes, 20);
+          const upperData: LineData<Time>[] = [];
+          const lowerData: LineData<Time>[] = [];
+          for (let i = 0; i < klineData.length; i++) { if (boll.upper[i] !== null) { upperData.push({ time: times[i], value: boll.upper[i]! }); lowerData.push({ time: times[i], value: boll.lower[i]! }); } }
+          (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(upperData);
+          if (indicatorSeries2Ref.current) indicatorSeries2Ref.current.setData(lowerData);
+          break;
+        }
+        case 'CCI': {
+          const cci = calculateCCI(ohlc, 14);
+          const cciData: LineData<Time>[] = [];
+          for (let i = 0; i < klineData.length; i++) { if (cci[i] !== null) cciData.push({ time: times[i], value: cci[i]! }); }
+          (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(cciData);
+          break;
+        }
+        case 'WR': {
+          const wr = calculateWR(ohlc, 14);
+          const wrData: LineData<Time>[] = [];
+          for (let i = 0; i < klineData.length; i++) { if (wr[i] !== null) wrData.push({ time: times[i], value: wr[i]! }); }
+          (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(wrData);
+          break;
+        }
+        case 'ATR': {
+          const atr = calculateATR(ohlc, 14);
+          const atrData: LineData<Time>[] = [];
+          for (let i = 0; i < klineData.length; i++) { if (atr[i] !== null) atrData.push({ time: times[i], value: atr[i]! }); }
+          (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(atrData);
+          break;
+        }
+        case 'SAR': {
+          const sar = calculateSAR(ohlc);
+          const sarData: LineData<Time>[] = [];
+          for (let i = 0; i < klineData.length; i++) { if (sar[i] !== null) sarData.push({ time: times[i], value: sar[i]! }); }
+          (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(sarData);
+          break;
+        }
+        case 'OBV': {
+          const obv = calculateOBV(ohlc);
+          const obvData: LineData<Time>[] = [];
+          for (let i = 0; i < klineData.length; i++) { if (obv[i] !== null) obvData.push({ time: times[i], value: obv[i]! }); }
+          (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(obvData);
+          break;
+        }
+        case 'MFI': {
+          const mfi = calculateMFI(ohlc, 14);
+          const mfiData: LineData<Time>[] = [];
+          for (let i = 0; i < klineData.length; i++) { if (mfi[i] !== null) mfiData.push({ time: times[i], value: mfi[i]! }); }
+          (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(mfiData);
+          break;
+        }
+        case 'Stoch': {
+          const stoch = calculateStoch(ohlc, 14, 3);
+          const kData: LineData<Time>[] = [];
+          const dData: LineData<Time>[] = [];
+          for (let i = 0; i < klineData.length; i++) { if (stoch.k[i] !== null) { kData.push({ time: times[i], value: stoch.k[i]! }); dData.push({ time: times[i], value: stoch.d[i]! }); } }
+          (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(kData);
+          if (indicatorSeries2Ref.current) indicatorSeries2Ref.current.setData(dData);
+          break;
+        }
       }
-      case 'RSI': {
-        const rsi = calculateRSI(closes, 14);
-        const rsiData: LineData<Time>[] = [];
-        for (let i = 0; i < klineData.length; i++) { if (rsi[i] !== null) rsiData.push({ time: times[i], value: rsi[i]! }); }
-        (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(rsiData);
-        break;
+      
+      if (indicatorChartRef.current) {
+        indicatorChartRef.current.timeScale().fitContent();
       }
-      case 'KDJ': {
-        const kdj = calculateKDJ(ohlc, 9);
-        const kData: LineData<Time>[] = [];
-        const dData: LineData<Time>[] = [];
-        for (let i = 0; i < klineData.length; i++) { if (kdj.k[i] !== null) { kData.push({ time: times[i], value: kdj.k[i]! }); dData.push({ time: times[i], value: kdj.d[i]! }); } }
-        (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(kData);
-        if (indicatorSeries2Ref.current) indicatorSeries2Ref.current.setData(dData);
-        break;
-      }
-      case 'BOLL': {
-        const boll = calculateBOLL(closes, 20);
-        const upperData: LineData<Time>[] = [];
-        const lowerData: LineData<Time>[] = [];
-        for (let i = 0; i < klineData.length; i++) { if (boll.upper[i] !== null) { upperData.push({ time: times[i], value: boll.upper[i]! }); lowerData.push({ time: times[i], value: boll.lower[i]! }); } }
-        (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(upperData);
-        if (indicatorSeries2Ref.current) indicatorSeries2Ref.current.setData(lowerData);
-        break;
-      }
-      case 'CCI': {
-        const cci = calculateCCI(ohlc, 14);
-        const cciData: LineData<Time>[] = [];
-        for (let i = 0; i < klineData.length; i++) { if (cci[i] !== null) cciData.push({ time: times[i], value: cci[i]! }); }
-        (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(cciData);
-        break;
-      }
-      case 'WR': {
-        const wr = calculateWR(ohlc, 14);
-        const wrData: LineData<Time>[] = [];
-        for (let i = 0; i < klineData.length; i++) { if (wr[i] !== null) wrData.push({ time: times[i], value: wr[i]! }); }
-        (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(wrData);
-        break;
-      }
-      case 'ATR': {
-        const atr = calculateATR(ohlc, 14);
-        const atrData: LineData<Time>[] = [];
-        for (let i = 0; i < klineData.length; i++) { if (atr[i] !== null) atrData.push({ time: times[i], value: atr[i]! }); }
-        (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(atrData);
-        break;
-      }
-      case 'SAR': {
-        const sar = calculateSAR(ohlc);
-        const sarData: LineData<Time>[] = [];
-        for (let i = 0; i < klineData.length; i++) { if (sar[i] !== null) sarData.push({ time: times[i], value: sar[i]! }); }
-        (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(sarData);
-        break;
-      }
-      case 'OBV': {
-        const obv = calculateOBV(ohlc);
-        const obvData: LineData<Time>[] = [];
-        for (let i = 0; i < klineData.length; i++) { if (obv[i] !== null) obvData.push({ time: times[i], value: obv[i]! }); }
-        (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(obvData);
-        break;
-      }
-      case 'MFI': {
-        const mfi = calculateMFI(ohlc, 14);
-        const mfiData: LineData<Time>[] = [];
-        for (let i = 0; i < klineData.length; i++) { if (mfi[i] !== null) mfiData.push({ time: times[i], value: mfi[i]! }); }
-        (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(mfiData);
-        break;
-      }
-      case 'Stoch': {
-        const stoch = calculateStoch(ohlc, 14, 3);
-        const kData: LineData<Time>[] = [];
-        const dData: LineData<Time>[] = [];
-        for (let i = 0; i < klineData.length; i++) { if (stoch.k[i] !== null) { kData.push({ time: times[i], value: stoch.k[i]! }); dData.push({ time: times[i], value: stoch.d[i]! }); } }
-        (indicatorSeries1Ref.current as ISeriesApi<'Line'>).setData(kData);
-        if (indicatorSeries2Ref.current) indicatorSeries2Ref.current.setData(dData);
-        break;
-      }
+    } catch (e) {
+      console.warn('更新指标时出错:', e);
     }
-    indicatorChartRef.current.timeScale().fitContent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -644,18 +792,25 @@ const KlineChart: React.FC = () => {
     setupIndicatorChart(selectedIndicator);
 
     mainChart.timeScale().subscribeVisibleTimeRangeChange(() => {
-      const visibleRange = mainChart.timeScale().getVisibleRange();
-      if (!visibleRange || !dataRangeRef.current.symbol) return;
-      const currentData = klineDataRef.current;
-      if (currentData.length === 0) return;
-      const fromTime = visibleRange.from as number;
-      const toTime = visibleRange.to as number;
-      const firstBarTime = currentData[0].open_time / 1000;
-      const lastBarTime = currentData[currentData.length - 1].open_time / 1000;
-      const shouldLoadHistory = fromTime <= firstBarTime + 60 && !isLoadingHistoryRef.current && dataRangeRef.current.earliestTime && hasMoreHistoryRef.current;
-      const shouldLoadFuture = toTime >= lastBarTime - 60 && !isLoadingFutureRef.current && dataRangeRef.current.latestTime && hasMoreFutureRef.current;
-      if (shouldLoadHistory) loadMoreHistoryRef.current?.();
-      if (shouldLoadFuture) loadMoreFutureRef.current?.();
+      // 防御性检查：确保图表仍然存在
+      if (!mainChartRef.current) return;
+      
+      try {
+        const visibleRange = mainChart.timeScale().getVisibleRange();
+        if (!visibleRange || !dataRangeRef.current.symbol) return;
+        const currentData = klineDataRef.current;
+        if (currentData.length === 0) return;
+        const fromTime = visibleRange.from as number;
+        const toTime = visibleRange.to as number;
+        const firstBarTime = currentData[0].open_time / 1000;
+        const lastBarTime = currentData[currentData.length - 1].open_time / 1000;
+        const shouldLoadHistory = fromTime <= firstBarTime + 60 && !isLoadingHistoryRef.current && dataRangeRef.current.earliestTime && hasMoreHistoryRef.current;
+        const shouldLoadFuture = toTime >= lastBarTime - 60 && !isLoadingFutureRef.current && dataRangeRef.current.latestTime && hasMoreFutureRef.current;
+        if (shouldLoadHistory) loadMoreHistoryRef.current?.();
+        if (shouldLoadFuture) loadMoreFutureRef.current?.();
+      } catch (e) {
+        console.warn('时间范围变化时出错:', e);
+      }
     });
 
     const handleResize = () => {
@@ -699,7 +854,7 @@ const KlineChart: React.FC = () => {
 
   const handleIndicatorChange = (indicator: IndicatorType) => {
     setSelectedIndicator(indicator);
-    setupIndicatorChart(indicator);
+    // 只更新指标，不重新创建图表
     if (klineDataRef.current.length > 0) updateIndicators(klineDataRef.current, indicator);
   };
 
