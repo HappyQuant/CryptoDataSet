@@ -4,6 +4,10 @@ export const zhCN = {
     themeToggle: '切换主题',
     switchToDark: '切换到暗色主题',
     switchToLight: '切换到亮色主题',
+    chinese: '中文',
+    english: '英文',
+    dark: '暗',
+    light: '亮',
   },
   menu: {
     collection: '数据采集',
@@ -102,6 +106,10 @@ export const enUS = {
     themeToggle: 'Toggle Theme',
     switchToDark: 'Switch to Dark Theme',
     switchToLight: 'Switch to Light Theme',
+    chinese: 'Chinese',
+    english: 'English',
+    dark: 'Dark',
+    light: 'Light',
   },
   menu: {
     collection: 'Data Collection',

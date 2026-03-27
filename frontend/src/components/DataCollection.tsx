@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Select, Button, Card, message, Table, Tag, Badge, Space } from 'antd';
-import { PlayCircleOutlined, SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, PauseCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlayCircleOutlined, SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, PauseCircleOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import moment from 'moment';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -175,7 +175,7 @@ const DataCollection: React.FC = () => {
       <Card title={t.collection.title} className="collection-card">
         <Form
           form={form}
-          layout="vertical"
+          layout="inline"
           onFinish={handleCollect}
           className="collection-form"
         >
