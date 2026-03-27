@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Table, Tag, Button, message, Space, Select } from 'antd';
+import { SyncOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { Option } = Select;
@@ -97,41 +98,44 @@ const DataManagement: React.FC = () => {
   ];
 
   return (
-    <Card 
-      title="K线数据管理" 
+    <Card
+      className="data-management-card"
+      title="K线数据管理"
       bordered={false}
       loading={configLoading}
       extra={
-        <Button type="primary" onClick={fetchData} loading={loading}>
+        <Button type="primary" onClick={fetchData} loading={loading} icon={<SyncOutlined />}>
           刷新
         </Button>
       }
     >
-      <Space style={{ marginBottom: 16 }}>
-        <Select
-          placeholder="筛选交易对"
-          value={filterSymbol}
-          onChange={(value) => setFilterSymbol(value)}
-          style={{ width: 150 }}
-          allowClear
-        >
-          {config.symbols.map(symbol => (
-            <Option key={symbol} value={symbol}>{symbol}</Option>
-          ))}
-        </Select>
-        <Select
-          placeholder="筛选K线间隔"
-          value={filterInterval}
-          onChange={(value) => setFilterInterval(value)}
-          style={{ width: 150 }}
-          allowClear
-        >
-          {config.intervals.map(interval => (
-            <Option key={interval} value={interval}>{interval}</Option>
-          ))}
-        </Select>
-        <Button onClick={fetchData}>查询</Button>
-        <Button onClick={() => { setFilterSymbol(undefined); setFilterInterval(undefined); }}>重置</Button>
+      <Space direction="vertical" size="middle" style={{ width: '100%' }} className="filter-section">
+        <Space wrap>
+          <Select
+            placeholder="筛选交易对"
+            value={filterSymbol}
+            onChange={(value) => setFilterSymbol(value)}
+            style={{ width: 160 }}
+            allowClear
+          >
+            {config.symbols.map(symbol => (
+              <Option key={symbol} value={symbol}>{symbol}</Option>
+            ))}
+          </Select>
+          <Select
+            placeholder="筛选K线间隔"
+            value={filterInterval}
+            onChange={(value) => setFilterInterval(value)}
+            style={{ width: 140 }}
+            allowClear
+          >
+            {config.intervals.map(interval => (
+              <Option key={interval} value={interval}>{interval}</Option>
+            ))}
+          </Select>
+          <Button onClick={fetchData}>查询</Button>
+          <Button onClick={() => { setFilterSymbol(undefined); setFilterInterval(undefined); }}>重置</Button>
+        </Space>
       </Space>
 
       <Table
@@ -144,6 +148,7 @@ const DataManagement: React.FC = () => {
           showSizeChanger: true,
           showTotal: (total) => `共 ${total} 条记录`,
         }}
+        className="data-table"
       />
     </Card>
   );

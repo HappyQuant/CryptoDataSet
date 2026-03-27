@@ -170,71 +170,75 @@ const DataCollection: React.FC = () => {
   ];
 
   return (
-    <div>
-      <Card title="K线数据采集" style={{ marginBottom: 16 }}>
+    <div className="data-collection">
+      <Card title="K线数据采集" className="collection-card">
         <Form
           form={form}
-          layout="inline"
+          layout="vertical"
           onFinish={handleCollect}
+          className="collection-form"
         >
-          <Form.Item
-            label="交易对"
-            name="symbol"
-            rules={[{ required: true, message: '请选择交易对' }]}
-          >
-            <Select
-              showSearch
-              placeholder="选择交易对"
-              style={{ width: 150 }}
-              filterOption={(input, option) =>
-                (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
-              }
+          <div className="form-row">
+            <Form.Item
+              label="交易对"
+              name="symbol"
+              rules={[{ required: true, message: '请选择交易对' }]}
             >
-              {config.symbols.map((symbol) => (
-                <Option key={symbol} value={symbol}>
-                  {symbol}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
+              <Select
+                showSearch
+                placeholder="选择交易对"
+                style={{ width: 160 }}
+                filterOption={(input, option) =>
+                  (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {config.symbols.map((symbol) => (
+                  <Option key={symbol} value={symbol}>
+                    {symbol}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-          <Form.Item
-            label="K线间隔"
-            name="interval"
-            rules={[{ required: true, message: '请选择K线间隔' }]}
-          >
-            <Select placeholder="选择K线间隔" style={{ width: 100 }}>
-              {config.intervals.map((interval) => (
-                <Option key={interval} value={interval}>
-                  {interval}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              icon={<PlayCircleOutlined />}
-              loading={loading}
+            <Form.Item
+              label="K线间隔"
+              name="interval"
+              rules={[{ required: true, message: '请选择K线间隔' }]}
             >
-              开始采集
-            </Button>
-          </Form.Item>
+              <Select placeholder="选择K线间隔" style={{ width: 120 }}>
+                {config.intervals.map((interval) => (
+                  <Option key={interval} value={interval}>
+                    {interval}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item>
+              <Button
+                type="primary"
+                htmlType="submit"
+                icon={<PlayCircleOutlined />}
+                loading={loading}
+              >
+                开始采集
+              </Button>
+            </Form.Item>
+          </div>
         </Form>
       </Card>
 
       <Card
+        className="tasks-card"
         title={
           <Space>
             <span>采集任务列表</span>
             <SyncOutlined
               spin={tasks.some(t => t.status === 'running')}
-              style={{ color: '#1890ff' }}
+              style={{ color: '#6366f1' }}
             />
             {tasks.some(t => t.status === 'running') && (
-              <Badge status="processing" text="有任务正在执行" />
+              <Badge status="processing" text={<span style={{ fontSize: 12, color: '#64748b' }}>有任务正在执行</span>} />
             )}
           </Space>
         }

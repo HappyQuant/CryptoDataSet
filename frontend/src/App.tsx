@@ -6,7 +6,7 @@ import KlineChart from './components/KlineChart';
 import DataCollection from './components/DataCollection';
 import './App.css';
 
-const { Header, Content } = Layout;
+const { Header, Sider, Content } = Layout;
 
 function App() {
   const [activeTab, setActiveTab] = React.useState('collection');
@@ -33,19 +33,23 @@ function App() {
     <Layout className="app-layout">
       <Header className="app-header">
         <div className="logo">Crypto量化数据管理平台</div>
-        <Menu
-          theme="dark"
-          mode="horizontal"
-          selectedKeys={[activeTab]}
-          items={menuItems}
-          onClick={({ key }) => setActiveTab(key)}
-        />
       </Header>
-      <Content className="app-content">
-        {activeTab === 'collection' && <DataCollection />}
-        {activeTab === 'management' && <DataManagement />}
-        {activeTab === 'chart' && <KlineChart />}
-      </Content>
+      <Layout>
+        <Sider width={200} className="app-sider" collapsible>
+          <Menu
+            theme="light"
+            mode="vertical"
+            selectedKeys={[activeTab]}
+            items={menuItems}
+            onClick={({ key }) => setActiveTab(key)}
+          />
+        </Sider>
+        <Content className="app-content">
+          {activeTab === 'collection' && <DataCollection />}
+          {activeTab === 'management' && <DataManagement />}
+          {activeTab === 'chart' && <KlineChart />}
+        </Content>
+      </Layout>
     </Layout>
   );
 }

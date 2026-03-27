@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Card, Form, Select, message, Spin, DatePicker, Button, Tag } from 'antd';
+import { DownloadOutlined } from '@ant-design/icons';
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries, IChartApi, ISeriesApi, CandlestickData, HistogramData, LineData, Time } from 'lightweight-charts';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -715,41 +716,50 @@ const KlineChart: React.FC = () => {
   };
 
   return (
-    <Card title="K线图表" style={{ marginBottom: 16 }}
-      extra={<Spin spinning={isLoadingHistory || isLoadingFuture} size="small"><span style={{ fontSize: 12, color: '#999' }}>{isLoadingHistory ? '加载历史中...' : isLoadingFuture ? '加载未来中...' : ''}</span></Spin>}>
-      <div style={{ marginBottom: 16 }}>
-        <Form form={form} layout="inline" onValuesChange={handleValuesChange}>
-          <Form.Item label="交易对" name="symbol" rules={[{ required: true }]}>
-            <Select style={{ width: 120 }} loading={configLoading}>{config.symbols.map(s => <Option key={s} value={s}>{s}</Option>)}</Select>
-          </Form.Item>
-          <Form.Item label="K线间隔" name="interval" rules={[{ required: true }]}>
-            <Select style={{ width: 100 }} loading={configLoading}>{config.intervals.map(i => <Option key={i} value={i}>{i}</Option>)}</Select>
-          </Form.Item>
-          <Form.Item label="跳转时间">
-            <DatePicker showTime value={selectedTime} onChange={setSelectedTime} placeholder="选择时间" style={{ width: 180 }} />
-          </Form.Item>
-          <Form.Item><Button type="primary" onClick={handleJumpToTime}>跳转</Button></Form.Item>
-        </Form>
-      </div>
+    <div className="kline-chart-wrapper">
+      <Card
+        className="kline-chart-card"
+        title="K线图表"
+        extra={<Spin spinning={isLoadingHistory || isLoadingFuture} size="small"><span style={{ fontSize: 12, color: '#64748b' }}>{isLoadingHistory ? '加载历史中...' : isLoadingFuture ? '加载未来中...' : ''}</span></Spin>}
+      >
+        <div className="chart-controls">
+          <div className="control-row">
+            <Form form={form} layout="inline" onValuesChange={handleValuesChange} className="chart-form">
+              <Form.Item label="交易对" name="symbol" rules={[{ required: true }]}>
+                <Select style={{ width: 120 }} loading={configLoading}>{config.symbols.map(s => <Option key={s} value={s}>{s}</Option>)}</Select>
+              </Form.Item>
+              <Form.Item label="K线间隔" name="interval" rules={[{ required: true }]}>
+                <Select style={{ width: 100 }} loading={configLoading}>{config.intervals.map(i => <Option key={i} value={i}>{i}</Option>)}</Select>
+              </Form.Item>
+              <Form.Item label="跳转时间">
+                <DatePicker showTime value={selectedTime} onChange={setSelectedTime} placeholder="选择时间" style={{ width: 170 }} />
+              </Form.Item>
+              <Form.Item>
+                <Button type="primary" onClick={handleJumpToTime} icon={<DownloadOutlined />}>跳转</Button>
+              </Form.Item>
+            </Form>
+          </div>
 
-      <div style={{ marginBottom: 8 }}>
-        <span style={{ fontSize: 12, marginRight: 16 }}>指标:</span>
-        <Select value={selectedIndicator} onChange={handleIndicatorChange} style={{ width: 120 }}>
-          {INDICATOR_OPTIONS.map(opt => <Option key={opt.value} value={opt.value}>{opt.label}</Option>)}
-        </Select>
-      </div>
+          <div className="indicator-row">
+            <span className="indicator-label">指标:</span>
+            <Select value={selectedIndicator} onChange={handleIndicatorChange} style={{ width: 120 }}>
+              {INDICATOR_OPTIONS.map(opt => <Option key={opt.value} value={opt.value}>{opt.label}</Option>)}
+            </Select>
 
-      <div ref={mainChartContainerRef} style={{ width: '100%', height: 400, marginBottom: 8 }} />
+            <div className="ma-tags">
+              <Tag color="gold" onClick={() => toggleMA('ma5')} style={{ opacity: visibleMAs.ma5 ? 1 : 0.4, cursor: 'pointer' }}>● MA5</Tag>
+              <Tag color="red" onClick={() => toggleMA('ma10')} style={{ opacity: visibleMAs.ma10 ? 1 : 0.4, cursor: 'pointer' }}>● MA10</Tag>
+              <Tag color="cyan" onClick={() => toggleMA('ma20')} style={{ opacity: visibleMAs.ma20 ? 1 : 0.4, cursor: 'pointer' }}>● MA20</Tag>
+              <Tag color="purple" onClick={() => toggleMA('ma60')} style={{ opacity: visibleMAs.ma60 ? 1 : 0.4, cursor: 'pointer' }}>● MA60</Tag>
+            </div>
+          </div>
+        </div>
 
-      <div style={{ display: 'flex', gap: 12, fontSize: 12, marginBottom: 8 }}>
-        <Tag color="gold" onClick={() => toggleMA('ma5')} style={{ opacity: visibleMAs.ma5 ? 1 : 0.4, cursor: 'pointer' }}>● MA5</Tag>
-        <Tag color="red" onClick={() => toggleMA('ma10')} style={{ opacity: visibleMAs.ma10 ? 1 : 0.4, cursor: 'pointer' }}>● MA10</Tag>
-        <Tag color="cyan" onClick={() => toggleMA('ma20')} style={{ opacity: visibleMAs.ma20 ? 1 : 0.4, cursor: 'pointer' }}>● MA20</Tag>
-        <Tag color="purple" onClick={() => toggleMA('ma60')} style={{ opacity: visibleMAs.ma60 ? 1 : 0.4, cursor: 'pointer' }}>● MA60</Tag>
-      </div>
+        <div ref={mainChartContainerRef} className="main-chart" />
 
-      <div ref={indicatorChartContainerRef} style={{ width: '100%', height: 120 }} />
-    </Card>
+        <div ref={indicatorChartContainerRef} className="indicator-chart" />
+      </Card>
+    </div>
   );
 };
 
