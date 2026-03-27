@@ -170,6 +170,19 @@ CryptoDataSet/
 
 ## 配置说明
 
+### 环境变量
+
+| 变量名 | 说明 | 示例 |
+|--------|------|------|
+| `DATABASE_URL` | PostgreSQL 数据库连接字符串 | `postgresql://postgres:postgres@localhost:5432/crypto_kline` |
+| `BINANCE_PROXY` | Binance API 代理地址（在中国大陆等地区访问时需要） | `http://127.0.0.1:1080` |
+
+在 `backend/.env` 文件中配置：
+```bash
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/crypto_kline
+BINANCE_PROXY=http://127.0.0.1:1080
+```
+
 ### 交易对配置
 修改 `backend/app/api/routes.py` 中的 `CONFIG_SYMBOLS`:
 ```python

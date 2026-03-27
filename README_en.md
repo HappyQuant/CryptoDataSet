@@ -170,6 +170,19 @@ After starting the backend server:
 
 ## Configuration
 
+### Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL database connection string | `postgresql://postgres:postgres@localhost:5432/crypto_kline` |
+| `BINANCE_PROXY` | Binance API proxy address (required in some regions like mainland China) | `http://127.0.0.1:1080` |
+
+Configure in `backend/.env` file:
+```bash
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/crypto_kline
+BINANCE_PROXY=http://127.0.0.1:1080
+```
+
 ### Trading Pairs
 Modify `CONFIG_SYMBOLS` in `backend/app/api/routes.py`:
 ```python
