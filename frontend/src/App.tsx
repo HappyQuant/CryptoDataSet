@@ -32,7 +32,7 @@ function App() {
   return (
     <Layout className="app-layout">
       <Header className="app-header">
-        <div className="logo">Crypto Kline Data</div>
+        <div className="logo">Crypto量化数据管理平台</div>
         <Menu
           theme="dark"
           mode="horizontal"

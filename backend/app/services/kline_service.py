@@ -288,7 +288,7 @@ class KlineService:
                 # 查询该时间范围内所有数据点，按时间排序
                 result = await db.execute(
                     select(table.c.open_time)
-                    .where(table.c.open_time >= analyze_start_time)
+                    .where(table.c.open_time >= earliest)
                     .where(table.c.open_time <= current_time)
                     .order_by(asc(table.c.open_time))
                 )
@@ -304,9 +304,9 @@ class KlineService:
                         
                         if actual_diff > interval_ms * 1.5:
                             gap_start = prev_time + interval_ms
-                            gap_end = curr_time - interval_ms
+                            gap_end = curr_time
                             gaps.append((gap_start, gap_end))
-                            print(f"发现断档: {gap_start} ~ {gap_end}")
+                            print(f"发现断档: {gap_start} ~ {gap_end} (缺失 {actual_diff // 60000} 分钟)")
                     
                     # 检查最后一条数据到当前时间是否需要继续采集
                     last_db_time = existing_times[-1]
@@ -335,22 +335,29 @@ class KlineService:
                     
                     current_start = gap_start
                     gap_collected = 0
+                    request_count = 0
                     
                     while current_start <= gap_end:
                         if not task_manager.is_task_running_by_id(task_id):
                             return
+                        
+                        request_count += 1
                         
                         try:
                             klines = await binance_service.fetch_klines(
                                 symbol=symbol,
                                 interval=interval,
                                 start_time=current_start,
-                                end_time=gap_end,
                                 limit=1000,
                             )
                             
                             if not klines or len(klines) == 0:
+                                print(f"  API 返回空数据，已到达数据末端")
                                 break
+                            
+                            first_time = klines[0][0]
+                            last_time = klines[-1][0]
+                            print(f"  请求 {request_count}: gap={gap_start} ~ {gap_end}, API返回 {first_time} ~ {last_time}")
                             
                             parsed_data = binance_service.parse_kline_data(klines)
                             
@@ -364,19 +371,19 @@ class KlineService:
                                     inserted_count += 1
                             
                             await db.commit()
+                            print(f"  本次插入 {inserted_count} 条")
+                            
                             gap_collected += inserted_count
                             total_collected += inserted_count
                             
-                            task_manager.update_task_progress(
-                                task_id, 
-                                total_collected, 
-                                f"补采第 {i}/{len(gaps)} 个区间，已采集 {total_collected} 条"
-                            )
-                            
                             if len(klines) < 1000:
+                                print(f"  API 返回数据少于1000条，已到达数据末端")
                                 break
                             
-                            last_time = klines[-1][0]
+                            if last_time >= gap_end:
+                                print(f"  已覆盖到 gap_end")
+                                break
+                            
                             current_start = last_time + 1
                             
                         except Exception as e:
