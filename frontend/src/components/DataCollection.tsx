@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Select, Button, Card, message, Table, Tag, Badge, Space } from 'antd';
-import { PlayCircleOutlined, SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, PauseCircleOutlined } from '@ant-design/icons';
+import { PlayCircleOutlined, SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, PauseCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import moment from 'moment';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -33,6 +33,7 @@ const DataCollection: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState<Config>({ symbols: [], intervals: [] });
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const fetchConfig = async () => {
     try {
@@ -243,18 +244,24 @@ const DataCollection: React.FC = () => {
           </Space>
         }
         extra={
-          <Button
-            icon={<SyncOutlined />}
-            onClick={fetchTasks}
-            size="small"
-          >
-            {t.collection.refresh}
-          </Button>
+          <Space>
+            <span style={{ fontSize: 14, color: '#64748b' }}>{t.collection.filterStatus}:</span>
+            <Select
+              value={statusFilter}
+              onChange={setStatusFilter}
+              style={{ width: 120 }}
+              size="small"
+            >
+              <Option value="all">{t.collection.allStatus}</Option>
+              <Option value="running">{t.collection.running}</Option>
+              <Option value="completed">{t.collection.completed}</Option>
+            </Select>
+          </Space>
         }
       >
         <Table
           columns={columns}
-          dataSource={tasks}
+          dataSource={tasks.filter(task => statusFilter === 'all' || task.status === statusFilter)}
           rowKey="task_id"
           pagination={{ pageSize: 10 }}
           size="small"

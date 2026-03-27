@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Table, Tag, Button, message, Space, Select } from 'antd';
-import { SyncOutlined } from '@ant-design/icons';
+
 import axios from 'axios';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -104,11 +104,6 @@ const DataManagement: React.FC = () => {
       title={t.management.title}
       bordered={false}
       loading={configLoading}
-      extra={
-        <Button type="primary" onClick={fetchData} loading={loading} icon={<SyncOutlined />}>
-          {t.management.refresh}
-        </Button>
-      }
     >
       <Space direction="vertical" size="middle" style={{ width: '100%' }} className="filter-section">
         <Space wrap>
