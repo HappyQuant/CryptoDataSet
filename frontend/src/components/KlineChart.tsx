@@ -547,6 +547,7 @@ const KlineChart: React.FC = () => {
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateIndicators = useCallback((klineData: KlineDataItem[], indicator: IndicatorType) => {
@@ -867,26 +868,44 @@ const KlineChart: React.FC = () => {
     const targetTime = selectedTime.valueOf();
     const { symbol, interval } = dataRangeRef.current;
     try {
-      const currentData = klineDataRef.current;
-      const dataIndex = currentData.findIndex(item => Math.abs(item.open_time / 1000 - targetTime / 1000) < 60);
-      if (dataIndex !== -1) { mainChartRef.current.timeScale().scrollToPosition(50, true); return; }
+      message.loading({ content: '正在加载数据...', key: 'jumpToTime' });
       const [historyResponse, futureResponse] = await Promise.all([
         axios.get(`http://127.0.0.1:8000/api/kline/${symbol}/${interval}/previous`, { params: { endTime: targetTime, limit: 1000 } }),
         axios.get(`http://127.0.0.1:8000/api/kline/${symbol}/${interval}/next`, { params: { fromTime: targetTime, limit: 1000 } })
       ]);
-      let allData = [...currentData];
+      let allData: KlineDataItem[] = [];
       if (historyResponse.data.length > 0) allData = [...allData, ...historyResponse.data];
       if (futureResponse.data.length > 0) allData = [...allData, ...futureResponse.data];
+      if (allData.length === 0) {
+        message.error({ content: '未找到K线数据', key: 'jumpToTime' });
+        return;
+      }
       allData = allData.sort((a, b) => a.open_time - b.open_time);
       const uniqueDataMap = new Map<number, KlineDataItem>();
       allData.forEach(item => uniqueDataMap.set(item.open_time, item));
       const allDataUnique = Array.from(uniqueDataMap.values());
       klineDataRef.current = allDataUnique;
-      updateIndicators(allDataUnique, selectedIndicator);
+      dataRangeRef.current = { symbol, interval, earliestTime: allDataUnique[0].open_time, latestTime: allDataUnique[allDataUnique.length - 1].open_time };
       hasMoreHistoryRef.current = historyResponse.data.length === 1000;
       hasMoreFutureRef.current = futureResponse.data.length === 1000;
-      mainChartRef.current.timeScale().fitContent();
-    } catch (error: any) { console.error('跳转失败:', error); message.error('跳转失败: ' + error.message); }
+      updateIndicators(allDataUnique, selectedIndicator);
+      const targetTimeSec = targetTime / 1000;
+      const dataIndex = allDataUnique.findIndex(item => Math.abs(item.open_time / 1000 - targetTimeSec) < 60);
+      if (dataIndex !== -1) {
+        const totalBars = allDataUnique.length;
+        const targetPosition = dataIndex / totalBars;
+        const visibleBars = 50;
+        const scrollPosition = Math.max(0, Math.min(1, targetPosition - visibleBars / (2 * totalBars)));
+        mainChartRef.current.timeScale().scrollToPosition(scrollPosition, true);
+        message.success({ content: `跳转到 ${allDataUnique[dataIndex].open_time}`, key: 'jumpToTime' });
+      } else {
+        mainChartRef.current.timeScale().fitContent();
+        message.warning({ content: '未找到精确时间点，已显示加载数据范围', key: 'jumpToTime' });
+      }
+    } catch (error: any) { 
+      console.error('跳转失败:', error); 
+      message.error({ content: '跳转失败: ' + error.message, key: 'jumpToTime' }); 
+    }
   };
 
   return (
