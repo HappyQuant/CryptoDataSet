@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Select, Button, Card, message, Table, Tag, Badge, Space, Tooltip } from 'antd';
+import { Form, Select, Button, Card, message, Table, Tag, Badge, Space } from 'antd';
 import { PlayCircleOutlined, SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, PauseCircleOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import moment from 'moment';
@@ -30,7 +30,6 @@ const DataCollection: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState<Config>({ symbols: [], intervals: [] });
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   // 获取配置
   const fetchConfig = async () => {
@@ -60,7 +59,6 @@ const DataCollection: React.FC = () => {
     const interval = setInterval(() => {
       fetchTasks();
     }, 3000);
-    setRefreshInterval(interval);
 
     return () => {
       clearInterval(interval);
@@ -170,15 +168,6 @@ const DataCollection: React.FC = () => {
       render: (timestamp: number) => timestamp ? moment(timestamp * 1000).format('YYYY-MM-DD HH:mm:ss') : '-',
     },
   ];
-
-  // 检查是否有正在运行的任务
-  const hasRunningTask = (symbol: string, interval: string) => {
-    return tasks.some(
-      task => task.symbol === symbol.toUpperCase() &&
-              task.interval === interval &&
-              task.status === 'running'
-    );
-  };
 
   return (
     <div>
