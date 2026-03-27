@@ -90,19 +90,27 @@ const KlineChart: React.FC = () => {
         const visibleRange = chart.getVisibleRange();
         if (!visibleRange) return;
 
-        console.log('可视区域 (from, to):', visibleRange.from, visibleRange.to);
+        // 获取可视区域的索引范围
+        const fromIndex = Math.floor(visibleRange.from * dataList.length);
+        const toIndex = Math.ceil(visibleRange.to * dataList.length);
 
-        // 如果可视区域接近数据的左边界（visibleRange.from < 0.3），
-        // 说明需要加载更多历史数据（向前加载）
-        if (visibleRange.from < 0.3 && !isLoadingHistory && dataRangeRef.current.earliestTime) {
-          console.log('触发向前加载（可视区域接近左边界）');
+        console.log('可视区域:', {
+          from: visibleRange.from,
+          to: visibleRange.to,
+          fromIndex,
+          toIndex,
+          totalData: dataList.length
+        });
+
+        // 如果滚动到数据的左边（fromIndex < 10），加载更多历史数据
+        if (fromIndex < 10 && !isLoadingHistory && dataRangeRef.current.earliestTime) {
+          console.log('触发向前加载（滚动到左边）');
           loadMoreHistoryRef.current?.();
         }
 
-        // 如果可视区域接近数据的右边界（visibleRange.to > 0.7），
-        // 说明需要加载更多未来数据（向后加载）
-        if (visibleRange.to > 0.7 && !isLoadingFuture && dataRangeRef.current.latestTime) {
-          console.log('触发向后加载（可视区域接近右边界）');
+        // 如果滚动到数据的右边（toIndex > dataList.length - 10），加载更多未来数据
+        if (toIndex > dataList.length - 10 && !isLoadingFuture && dataRangeRef.current.latestTime) {
+          console.log('触发向后加载（滚动到右边）');
           loadMoreFutureRef.current?.();
         }
       }, 200);
