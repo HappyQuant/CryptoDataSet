@@ -319,30 +319,43 @@ class KlineService:
                     gaps = self._merge_gaps(gaps, interval_ms)
                 
                 print(f"共发现 {len(gaps)} 个断档区间")
-                
+
+                if len(gaps) == 0:
+                    task_manager.update_task_progress(
+                        task_id,
+                        total_collected,
+                        f"数据完整，无需补采，已采集 {total_collected} 条"
+                    )
+
                 # 第三步：补采断档
                 print("=== 第三步：补采断档 ===")
-                
+
                 for i, (gap_start, gap_end) in enumerate(gaps, 1):
                     if not task_manager.is_task_running_by_id(task_id):
                         print(f"任务 {task_id} 已停止")
                         return
-                    
+
                     from datetime import datetime
                     start_str = datetime.fromtimestamp(gap_start / 1000).strftime('%Y-%m-%d %H:%M:%S')
                     end_str = datetime.fromtimestamp(gap_end / 1000).strftime('%Y-%m-%d %H:%M:%S')
                     print(f"正在补采第 {i}/{len(gaps)} 个区间: {start_str} ~ {end_str}")
-                    
+
+                    task_manager.update_task_progress(
+                        task_id,
+                        total_collected,
+                        f"补采第 {i}/{len(gaps)} 个区间: {start_str} ~ {end_str}"
+                    )
+
                     current_start = gap_start
                     gap_collected = 0
                     request_count = 0
-                    
+
                     while current_start <= gap_end:
                         if not task_manager.is_task_running_by_id(task_id):
                             return
-                        
+
                         request_count += 1
-                        
+
                         try:
                             klines = await binance_service.fetch_klines(
                                 symbol=symbol,
@@ -350,17 +363,17 @@ class KlineService:
                                 start_time=current_start,
                                 limit=1000,
                             )
-                            
+
                             if not klines or len(klines) == 0:
                                 print(f"  API 返回空数据，已到达数据末端")
                                 break
-                            
+
                             first_time = klines[0][0]
                             last_time = klines[-1][0]
                             print(f"  请求 {request_count}: gap={gap_start} ~ {gap_end}, API返回 {first_time} ~ {last_time}")
-                            
+
                             parsed_data = binance_service.parse_kline_data(klines)
-                            
+
                             inserted_count = 0
                             for data in parsed_data:
                                 stmt = insert(table).values(**data).on_conflict_do_nothing(
@@ -369,28 +382,34 @@ class KlineService:
                                 result = await db.execute(stmt)
                                 if result.rowcount > 0:
                                     inserted_count += 1
-                            
+
                             await db.commit()
                             print(f"  本次插入 {inserted_count} 条")
-                            
+
                             gap_collected += inserted_count
                             total_collected += inserted_count
-                            
+
+                            task_manager.update_task_progress(
+                                task_id,
+                                total_collected,
+                                f"补采第 {i}/{len(gaps)} 个区间，已采集 {total_collected} 条"
+                            )
+
                             if len(klines) < 1000:
                                 print(f"  API 返回数据少于1000条，已到达数据末端")
                                 break
-                            
+
                             if last_time >= gap_end:
                                 print(f"  已覆盖到 gap_end")
                                 break
-                            
+
                             current_start = last_time + 1
-                            
+
                         except Exception as e:
                             await db.rollback()
                             print(f"补采失败: {e}")
                             break
-                    
+
                     print(f"断档补采完成，插入 {gap_collected} 条数据")
             
             # 任务完成

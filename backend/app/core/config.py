@@ -11,6 +11,9 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        @classmethod
+        def parse_env(cls, env_file: str = ".env") -> None:
+            pass
 
 
 settings = Settings()

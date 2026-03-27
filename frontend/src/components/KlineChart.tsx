@@ -93,7 +93,12 @@ const KlineChart: React.FC = () => {
         const sum = data.slice(0, i + 1).reduce((a, b) => a + b, 0) / (i + 1);
         ema.push(sum);
       } else {
-        ema.push((data[i] - ema[i - 1]!) * multiplier + ema[i - 1]!);
+        const prevEma = ema[i - 1];
+        if (prevEma !== null && prevEma !== undefined) {
+          ema.push((data[i] - prevEma) * multiplier + prevEma);
+        } else {
+          ema.push(null);
+        }
       }
     }
     return ema;
@@ -137,12 +142,17 @@ const KlineChart: React.FC = () => {
         const high = Math.max(...data.slice(i - period + 1, i + 1).map(d => d.high));
         const low = Math.min(...data.slice(i - period + 1, i + 1).map(d => d.low));
         const close = data[i].close;
-        const rsvValue = ((close - low) / (high - low)) * 100;
-        const prevK = k[i - 1] ?? 50;
-        const prevD = d[i - 1] ?? 50;
-        k.push((2 / 3) * prevK + (1 / 3) * rsvValue);
-        d.push((2 / 3) * prevD + (1 / 3) * k[i]!);
-        j.push(3 * k[i]! - 2 * d[i]!);
+        const range = high - low;
+        if (range === 0) { k.push(null); d.push(null); j.push(null); continue; }
+        const rsvValue = ((close - low) / range) * 100;
+        const prevK = k[i - 1];
+        const prevD = d[i - 1];
+        if (prevK === null || prevD === null) { k.push(rsvValue); d.push(rsvValue); j.push(3 * rsvValue - 2 * rsvValue); continue; }
+        const newK = (2 / 3) * prevK + (1 / 3) * rsvValue;
+        const newD = (2 / 3) * prevD + (1 / 3) * newK;
+        k.push(newK);
+        d.push(newD);
+        j.push(3 * newK - 2 * newD);
       }
     }
     return { k, d, j };
@@ -188,7 +198,9 @@ const KlineChart: React.FC = () => {
       else {
         const high = Math.max(...data.slice(i - period + 1, i + 1).map(d => d.high));
         const low = Math.min(...data.slice(i - period + 1, i + 1).map(d => d.low));
-        wr.push((high - data[i].close) / (high - low) * -100);
+        const range = high - low;
+        if (range === 0) { wr.push(null); }
+        else { wr.push((high - data[i].close) / range * -100); }
       }
     }
     return wr;
@@ -213,13 +225,15 @@ const KlineChart: React.FC = () => {
   };
 
   const calculateSAR = (data: { high: number; low: number; close: number }[], af: number = 0.02, maxAf: number = 0.2): (number | null)[] => {
+    if (data.length === 0) return [];
     const sar: (number | null)[] = [];
     let isUptrend = true;
     let ep = data[0].high;
     let currentAf = af;
     sar.push(data[0].low);
     for (let i = 1; i < data.length; i++) {
-      const prevSar = sar[i - 1]!;
+      const prevSar = sar[i - 1];
+      if (prevSar === null) { sar.push(null); continue; }
       if (isUptrend) {
         const newSar = prevSar + currentAf * (ep - prevSar);
         if (data[i].low < newSar) { isUptrend = false; sar.push(data[i].high); ep = data[i].low; currentAf = af; }
@@ -270,14 +284,17 @@ const KlineChart: React.FC = () => {
       else {
         const high = Math.max(...data.slice(i - kPeriod + 1, i + 1).map(d => d.high));
         const low = Math.min(...data.slice(i - kPeriod + 1, i + 1).map(d => d.low));
-        k.push(((data[i].close - low) / (high - low)) * 100);
+        const range = high - low;
+        if (range === 0) { k.push(null); d.push(null); }
+        else { k.push(((data[i].close - low) / range) * 100); }
       }
     }
     for (let i = 0; i < k.length; i++) {
       if (i < kPeriod - 1 + dPeriod - 1) { d.push(null); }
       else {
         const slice = k.slice(i - dPeriod + 1, i + 1).filter(v => v !== null) as number[];
-        d.push(slice.reduce((a, b) => a + b, 0) / dPeriod);
+        if (slice.length === 0) { d.push(null); }
+        else { d.push(slice.reduce((a, b) => a + b, 0) / slice.length); }
       }
     }
     return { k, d };

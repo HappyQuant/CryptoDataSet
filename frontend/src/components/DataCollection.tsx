@@ -138,12 +138,12 @@ const DataCollection: React.FC = () => {
       title: '采集数量',
       dataIndex: 'collected_count',
       key: 'collected_count',
-      width: 100,
+      width: 120,
       render: (count: number, record: TaskInfo) => (
         record.status === 'running' ? (
-          <Badge count={count} showZero style={{ backgroundColor: '#1890ff' }} />
+          <Badge count={count} showZero style={{ backgroundColor: '#6366f1' }} overflowCount={9999} />
         ) : (
-          count
+          <span style={{ fontFamily: 'monospace' }}>{count.toLocaleString()}</span>
         )
       ),
     },

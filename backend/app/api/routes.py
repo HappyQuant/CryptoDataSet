@@ -61,15 +61,28 @@ async def collect_kline_data(
     request: KlineCollectionRequest,
 ):
     """触发K线数据采集（后台异步执行）
-    
+
     同一类型的任务（同交易对+同K线区间）不允许同时执行
     """
     symbol = request.symbol.upper()
     interval = request.interval
-    
+
     print(f"收到采集请求: {symbol} {interval}")
-    
-    # 检查是否有同类型任务正在执行
+
+    if symbol not in CONFIG_SYMBOLS:
+        return KlineCollectionResponse(
+            success=False,
+            message=f"不支持的交易对: {symbol}",
+            task_id=None,
+        )
+
+    if interval not in CONFIG_INTERVALS:
+        return KlineCollectionResponse(
+            success=False,
+            message=f"不支持的K线间隔: {interval}",
+            task_id=None,
+        )
+
     if task_manager.is_task_running(symbol, interval):
         running_task = task_manager.get_running_task_by_type(symbol, interval)
         if running_task:
@@ -79,7 +92,7 @@ async def collect_kline_data(
                 message=f"同类型任务正在执行中 (任务ID: {running_task.task_id})",
                 task_id=running_task.task_id,
             )
-    
+
     # 创建新任务
     task_info = task_manager.create_task(symbol, interval)
     if not task_info:
@@ -89,9 +102,9 @@ async def collect_kline_data(
             message="创建任务失败，同类型任务可能正在执行",
             task_id=None,
         )
-    
+
     print(f"任务创建成功: {task_info.task_id}")
-    
+
     # 启动后台任务
     async def run_task():
         print(f"后台任务开始执行: {task_info.task_id}")
@@ -106,15 +119,16 @@ async def collect_kline_data(
         except Exception as e:
             print(f"任务执行异常: {e}")
             import traceback
+
             traceback.print_exc()
             task_manager.fail_task(task_info.task_id, str(e))
-    
+
     # 标记任务为运行中
     task_manager.start_task(task_info.task_id)
-    
+
     # 创建并启动后台任务
     asyncio.create_task(run_task())
-    
+
     print(f"任务已启动: {task_info.task_id}")
     print("API立即返回")
     return KlineCollectionResponse(
@@ -143,6 +157,7 @@ async def get_task(task_id: str):
     task_info = task_manager.get_task(task_id)
     if not task_info:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=404, detail="任务不存在")
     return task_info.to_dict()
 
@@ -167,6 +182,19 @@ async def get_previous_klines(
     db: AsyncSession = Depends(get_db),
 ):
     """获取指定时间之前的K线数据"""
+    symbol = symbol.upper()
+    if symbol not in CONFIG_SYMBOLS:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail=f"不支持的交易对: {symbol}")
+    if interval not in CONFIG_INTERVALS:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail=f"不支持的K线间隔: {interval}")
+    if endTime <= 0 or limit <= 0:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail="参数必须为正数")
     return await kline_service.get_previous_klines(
         db=db, symbol=symbol, interval=interval, end_time=endTime, limit=limit
     )
@@ -181,6 +209,19 @@ async def get_next_klines(
     db: AsyncSession = Depends(get_db),
 ):
     """获取指定时间之后的K线数据"""
+    symbol = symbol.upper()
+    if symbol not in CONFIG_SYMBOLS:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail=f"不支持的交易对: {symbol}")
+    if interval not in CONFIG_INTERVALS:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail=f"不支持的K线间隔: {interval}")
+    if fromTime < 0 or limit <= 0:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail="参数必须为正数")
     return await kline_service.get_next_klines(
         db=db, symbol=symbol, interval=interval, from_time=fromTime, limit=limit
     )
