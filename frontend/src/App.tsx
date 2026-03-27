@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, Menu } from 'antd';
 import { DatabaseOutlined, LineChartOutlined, DownloadOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
 import DataManagement from './components/DataManagement';
@@ -55,9 +55,18 @@ const HeaderContent: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
-  const [activeTab, setActiveTab] = React.useState('collection');
+  const [activeTab, setActiveTab] = useState('collection');
+  const [isMobile, setIsMobile] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const { theme } = useTheme();
   const { t } = useLanguage();
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const menuItems = [
     {
@@ -77,25 +86,63 @@ const AppContent: React.FC = () => {
     },
   ];
 
+  const handleMenuClick = (key: string) => {
+    setActiveTab(key);
+    setDrawerOpen(false);
+  };
+
   return (
     <Layout className="app-layout">
       <HeaderContent />
       <Layout>
-        <Sider width={200} className="app-sider" collapsible>
-          <Menu
-            theme={theme}
-            mode="vertical"
-            selectedKeys={[activeTab]}
-            items={menuItems}
-            onClick={({ key }) => setActiveTab(key)}
-          />
-        </Sider>
+        {!isMobile && (
+          <Sider width={200} className="app-sider" collapsible>
+            <Menu
+              theme={theme}
+              mode="inline"
+              selectedKeys={[activeTab]}
+              items={menuItems}
+              onClick={({ key }) => setActiveTab(key)}
+            />
+          </Sider>
+        )}
+
+        {isMobile && drawerOpen && (
+          <>
+            <div className="drawer-overlay open" onClick={() => setDrawerOpen(false)} />
+            <div className="app-sider-drawer open">
+              <Menu
+                theme={theme}
+                mode="inline"
+                selectedKeys={[activeTab]}
+                items={menuItems}
+                onClick={({ key }) => handleMenuClick(key)}
+              />
+            </div>
+          </>
+        )}
+
         <Content className="app-content">
           {activeTab === 'collection' && <DataCollection />}
           {activeTab === 'management' && <DataManagement />}
           {activeTab === 'chart' && <KlineChart />}
         </Content>
       </Layout>
+
+      {isMobile && (
+        <div className="mobile-tab-nav">
+          {menuItems.map(item => (
+            <div
+              key={item.key}
+              className={`mobile-tab-item ${activeTab === item.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(item.key)}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </Layout>
   );
 };

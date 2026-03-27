@@ -173,60 +173,29 @@ const DataCollection: React.FC = () => {
   return (
     <div className="data-collection">
       <Card title={t.collection.title} className="collection-card">
-        <Form
-          form={form}
-          layout="inline"
-          onFinish={handleCollect}
-          className="collection-form"
-        >
-          <div className="form-row">
-            <Form.Item
-              label={t.management.symbol}
-              name="symbol"
-              rules={[{ required: true, message: t.collection.selectSymbol }]}
-            >
-              <Select
-                showSearch
-                placeholder={t.collection.selectSymbol}
-                style={{ width: 160 }}
-                filterOption={(input, option) =>
-                  (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
-                }
-              >
+        <div className="chart-controls">
+          <Form form={form} onFinish={handleCollect} className="chart-form">
+            <Form.Item label={t.management.symbol} name="symbol" rules={[{ required: true, message: t.collection.selectSymbol }]}>
+              <Select showSearch placeholder={t.collection.selectSymbol} filterOption={(input, option) => (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())}>
                 {config.symbols.map((symbol) => (
-                  <Option key={symbol} value={symbol}>
-                    {symbol}
-                  </Option>
+                  <Option key={symbol} value={symbol}>{symbol}</Option>
                 ))}
               </Select>
             </Form.Item>
-
-            <Form.Item
-              label={t.management.interval}
-              name="interval"
-              rules={[{ required: true, message: t.collection.selectInterval }]}
-            >
-              <Select placeholder={t.collection.selectInterval} style={{ width: 120 }}>
+            <Form.Item label={t.management.interval} name="interval" rules={[{ required: true, message: t.collection.selectInterval }]}>
+              <Select placeholder={t.collection.selectInterval}>
                 {config.intervals.map((interval) => (
-                  <Option key={interval} value={interval}>
-                    {interval}
-                  </Option>
+                  <Option key={interval} value={interval}>{interval}</Option>
                 ))}
               </Select>
             </Form.Item>
-
             <Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                icon={<PlayCircleOutlined />}
-                loading={loading}
-              >
+              <Button type="primary" htmlType="submit" icon={<PlayCircleOutlined />} loading={loading}>
                 {t.collection.startCollect}
               </Button>
             </Form.Item>
-          </div>
-        </Form>
+          </Form>
+        </div>
       </Card>
 
       <Card
@@ -259,14 +228,16 @@ const DataCollection: React.FC = () => {
           </Space>
         }
       >
-        <Table
-          columns={columns}
-          dataSource={tasks.filter(task => statusFilter === 'all' || task.status === statusFilter)}
-          rowKey="task_id"
-          pagination={{ pageSize: 10 }}
-          size="small"
-          scroll={{ x: 1200 }}
-        />
+        <div className="table-scroll-wrapper">
+          <Table
+            columns={columns}
+            dataSource={tasks.filter(task => statusFilter === 'all' || task.status === statusFilter)}
+            rowKey="task_id"
+            pagination={{ pageSize: 10 }}
+            size="small"
+            scroll={{ x: 'max-content' }}
+          />
+        </div>
       </Card>
     </div>
   );

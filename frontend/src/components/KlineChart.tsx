@@ -792,10 +792,9 @@ const KlineChart: React.FC = () => {
 
     setupIndicatorChart(selectedIndicator);
 
-    mainChart.timeScale().subscribeVisibleTimeRangeChange(() => {
-      // 防御性检查：确保图表仍然存在
+    const subscribeCallback = () => {
       if (!mainChartRef.current) return;
-      
+
       try {
         const visibleRange = mainChart.timeScale().getVisibleRange();
         if (!visibleRange || !dataRangeRef.current.symbol) return;
@@ -812,11 +811,17 @@ const KlineChart: React.FC = () => {
       } catch (e) {
         console.warn('时间范围变化时出错:', e);
       }
-    });
+    };
+
+    mainChart.timeScale().subscribeVisibleTimeRangeChange(subscribeCallback);
 
     const handleResize = () => {
-      if (mainChartRef.current && mainChartContainerRef.current) mainChartRef.current.applyOptions({ width: mainChartContainerRef.current.clientWidth });
-      if (indicatorChartRef.current && indicatorChartContainerRef.current) indicatorChartRef.current.applyOptions({ width: indicatorChartContainerRef.current.clientWidth });
+      if (mainChartRef.current && mainChartContainerRef.current) {
+        mainChartRef.current.applyOptions({ width: mainChartContainerRef.current.clientWidth });
+      }
+      if (indicatorChartRef.current && indicatorChartContainerRef.current) {
+        indicatorChartRef.current.applyOptions({ width: indicatorChartContainerRef.current.clientWidth });
+      }
     };
     window.addEventListener('resize', handleResize);
 
@@ -831,6 +836,13 @@ const KlineChart: React.FC = () => {
           indicatorChartRef.current.remove();
           indicatorChartRef.current = null;
         }
+        candlestickSeriesRef.current = null;
+        ma5SeriesRef.current = null;
+        ma10SeriesRef.current = null;
+        ma20SeriesRef.current = null;
+        ma60SeriesRef.current = null;
+        indicatorSeries1Ref.current = null;
+        indicatorSeries2Ref.current = null;
       } catch (e) {
         console.warn('图表清理时出错:', e);
       }
@@ -916,22 +928,20 @@ const KlineChart: React.FC = () => {
         extra={<Spin spinning={isLoadingHistory || isLoadingFuture} size="small"><span style={{ fontSize: 12, color: '#64748b' }}>{isLoadingHistory ? t.chart.loadingHistory : isLoadingFuture ? t.chart.loadingFuture : ''}</span></Spin>}
       >
         <div className="chart-controls">
-          <div className="control-row">
-            <Form form={form} layout="inline" onValuesChange={handleValuesChange} className="chart-form">
-              <Form.Item label={t.chart.symbol} name="symbol" rules={[{ required: true }]}>
-                <Select style={{ width: 120 }} loading={configLoading}>{config.symbols.map(s => <Option key={s} value={s}>{s}</Option>)}</Select>
-              </Form.Item>
-              <Form.Item label={t.chart.interval} name="interval" rules={[{ required: true }]}>
-                <Select style={{ width: 100 }} loading={configLoading}>{config.intervals.map(i => <Option key={i} value={i}>{i}</Option>)}</Select>
-              </Form.Item>
-              <Form.Item label={t.chart.jumpToTime}>
-                <DatePicker showTime value={selectedTime} onChange={setSelectedTime} placeholder={t.chart.selectTime} style={{ width: 170 }} />
-              </Form.Item>
-              <Form.Item>
-                <Button type="primary" onClick={handleJumpToTime} icon={<DownloadOutlined />}>{t.chart.jump}</Button>
-              </Form.Item>
-            </Form>
-          </div>
+          <Form form={form} onValuesChange={handleValuesChange} className="chart-form">
+            <Form.Item label={t.chart.symbol} name="symbol" rules={[{ required: true }]}>
+              <Select style={{ width: '100%' }} loading={configLoading}>{config.symbols.map(s => <Option key={s} value={s}>{s}</Option>)}</Select>
+            </Form.Item>
+            <Form.Item label={t.chart.interval} name="interval" rules={[{ required: true }]}>
+              <Select style={{ width: '100%' }} loading={configLoading}>{config.intervals.map(i => <Option key={i} value={i}>{i}</Option>)}</Select>
+            </Form.Item>
+            <Form.Item label={t.chart.jumpToTime}>
+              <DatePicker showTime value={selectedTime} onChange={setSelectedTime} placeholder={t.chart.selectTime} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" onClick={handleJumpToTime} icon={<DownloadOutlined />}>{t.chart.jump}</Button>
+            </Form.Item>
+          </Form>
 
           <div className="indicator-row">
             <span className="indicator-label">{t.chart.indicator}:</span>

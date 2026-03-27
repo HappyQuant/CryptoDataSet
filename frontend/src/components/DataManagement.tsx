@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Table, Tag, Button, message, Space, Select } from 'antd';
+import { Card, Table, Tag, Button, message, Select, Form } from 'antd';
 
 import axios from 'axios';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -105,13 +105,12 @@ const DataManagement: React.FC = () => {
       bordered={false}
       loading={configLoading}
     >
-      <Space direction="vertical" size="middle" style={{ width: '100%' }} className="filter-section">
-        <Space wrap>
+      <div className="chart-controls">
+        <Form className="chart-form">
           <Select
             placeholder={t.management.filterSymbol}
             value={filterSymbol}
             onChange={(value) => setFilterSymbol(value)}
-            style={{ width: 160 }}
             allowClear
           >
             {config.symbols.map(symbol => (
@@ -122,7 +121,6 @@ const DataManagement: React.FC = () => {
             placeholder={t.management.filterInterval}
             value={filterInterval}
             onChange={(value) => setFilterInterval(value)}
-            style={{ width: 140 }}
             allowClear
           >
             {config.intervals.map(interval => (
@@ -131,21 +129,24 @@ const DataManagement: React.FC = () => {
           </Select>
           <Button onClick={fetchData}>{t.management.query}</Button>
           <Button onClick={() => { setFilterSymbol(undefined); setFilterInterval(undefined); }}>{t.management.reset}</Button>
-        </Space>
-      </Space>
+        </Form>
+      </div>
 
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey={(record) => `${record.symbol}_${record.interval}`}
-        loading={loading}
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showTotal: (total) => t.management.total.replace('{total}', String(total)),
-        }}
-        className="data-table"
-      />
+      <div className="table-scroll-wrapper">
+        <Table
+          columns={columns}
+          dataSource={data}
+          rowKey={(record) => `${record.symbol}_${record.interval}`}
+          loading={loading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showTotal: (total) => t.management.total.replace('{total}', String(total)),
+          }}
+          className="data-table"
+          scroll={{ x: 'max-content' }}
+        />
+      </div>
     </Card>
   );
 };
