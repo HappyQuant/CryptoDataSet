@@ -8,7 +8,7 @@ is_production = os.getenv("ENVIRONMENT", "development") == "production"
 
 if is_production:
     engine = create_async_engine(
-        settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+        settings.DATABASE_URL,
         poolclass=QueuePool,
         pool_size=20,
         max_overflow=30,
@@ -19,7 +19,7 @@ if is_production:
     )
 else:
     engine = create_async_engine(
-        settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+        settings.DATABASE_URL,
         poolclass=NullPool,
         echo=False,
     )
