@@ -144,14 +144,6 @@
             "markers": "python_version >= '3.10'",
             "version": "==4.13.0"
         },
-        "async-timeout": {
-            "hashes": [
-                "sha256:39e3809566ff85354557ec2398b55e096c8364bacac9405a7a1fa429e77fe76c",
-                "sha256:d9321a7a3d5a6a5e187e824d2fa0793ce379a202935782d555d6e9d2735677d3"
-            ],
-            "markers": "python_version >= '3.8'",
-            "version": "==5.0.1"
-        },
         "asyncpg": {
             "hashes": [
                 "sha256:04ff0785ae7eed6cc138e73fc67b8e51d54ee7a3ce9b63666ce55a0bf095f7ba",
