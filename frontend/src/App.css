@@ -928,3 +928,53 @@ body {
 [data-theme="dark"] .indicator-chart {
   background: #1a1a1a !important;
 }
+
+.ohlc-display {
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border-radius: var(--radius-xs);
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+}
+
+@media (min-width: 768px) {
+  .ohlc-display {
+    gap: 20px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+}
+
+.ohlc-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ohlc-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+@media (min-width: 768px) {
+  .ohlc-label {
+    font-size: 12px;
+  }
+}
+
+.ohlc-value {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ohlc-value.up {
+  color: #26a69a;
+}
+
+.ohlc-value.down {
+  color: #ef5350;
+}

@@ -68,6 +68,7 @@ const KlineChart: React.FC = () => {
   const [selectedTime, setSelectedTime] = useState<dayjs.Dayjs | null>(null);
   const [selectedIndicator, setSelectedIndicator] = useState<IndicatorType>('VOL');
   const [visibleMAs, setVisibleMAs] = useState({ ma5: true, ma10: true, ma20: true, ma60: true });
+  const [hoverData, setHoverData] = useState<{ open: number; close: number; high: number; low: number; time: number } | null>(null);
 
   const dataRangeRef = useRef<{
     symbol: string;
@@ -815,6 +816,39 @@ const KlineChart: React.FC = () => {
 
     mainChart.timeScale().subscribeVisibleTimeRangeChange(subscribeCallback);
 
+    mainChart.subscribeCrosshairMove((param) => {
+      if (!param.time) {
+        setHoverData(null);
+        return;
+      }
+      
+      const timeNum = typeof param.time === 'number' ? param.time : 
+                      typeof param.time === 'object' && 'timestamp' in param.time ? (param.time as any).timestamp :
+                      null;
+      
+      if (timeNum === null) {
+        setHoverData(null);
+        return;
+      }
+      
+      const klineData = klineDataRef.current;
+      const barData = klineData.find((d: KlineDataItem) => {
+        return Math.abs(d.open_time / 1000 - timeNum) < 1;
+      });
+      
+      if (barData) {
+        setHoverData({
+          open: parseFloat(barData.open_price),
+          high: parseFloat(barData.high_price),
+          low: parseFloat(barData.low_price),
+          close: parseFloat(barData.close_price),
+          time: timeNum,
+        });
+      } else {
+        setHoverData(null);
+      }
+    });
+
     const handleResize = () => {
       if (mainChartRef.current && mainChartContainerRef.current) {
         mainChartRef.current.applyOptions({ width: mainChartContainerRef.current.clientWidth });
@@ -957,6 +991,29 @@ const KlineChart: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {hoverData && (
+          <div className="ohlc-display">
+            <span className="ohlc-item ohlc-open">
+              <span className="ohlc-label">O</span>
+              <span className="ohlc-value">{hoverData.open.toFixed(2)}</span>
+            </span>
+            <span className="ohlc-item ohlc-close">
+              <span className="ohlc-label">C</span>
+              <span className={`ohlc-value ${hoverData.close >= hoverData.open ? 'up' : 'down'}`}>
+                {hoverData.close.toFixed(2)}
+              </span>
+            </span>
+            <span className="ohlc-item ohlc-high">
+              <span className="ohlc-label">H</span>
+              <span className="ohlc-value">{hoverData.high.toFixed(2)}</span>
+            </span>
+            <span className="ohlc-item ohlc-low">
+              <span className="ohlc-label">L</span>
+              <span className="ohlc-value">{hoverData.low.toFixed(2)}</span>
+            </span>
+          </div>
+        )}
 
         <div ref={mainChartContainerRef} className="main-chart" />
 
