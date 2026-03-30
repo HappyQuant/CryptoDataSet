@@ -162,7 +162,7 @@ const DataCollection: React.FC = () => {
       render: (timestamp: number) => moment(timestamp * 1000).format('YYYY-MM-DD HH:mm:ss'),
     },
     {
-      title: t.collection.duration,
+      title: t.collection.completedAt,
       dataIndex: 'completed_at',
       key: 'completed_at',
       width: 180,
@@ -233,7 +233,7 @@ const DataCollection: React.FC = () => {
             columns={columns}
             dataSource={tasks.filter(task => statusFilter === 'all' || task.status === statusFilter)}
             rowKey="task_id"
-            pagination={{ pageSize: 10 }}
+            pagination={{ pageSize: 30 }}
             size="small"
             scroll={{ x: 'max-content' }}
           />

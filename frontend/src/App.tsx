@@ -23,28 +23,28 @@ const HeaderContent: React.FC = () => {
       <div className="header-actions">
         <div className="toggle-group">
           <button
-            className={`toggle-btn ${isZhCN ? 'active' : ''}`}
+            className="toggle-btn"
             onClick={toggleLanguage}
             title={isZhCN ? 'Switch to English' : '切换到中文'}
           >
-            <span className="toggle-text-active">{isZhCN ? t.app.chinese : t.app.english}</span>
+            <span className="toggle-text-active">{isZhCN ? t.app.english : t.app.chinese}</span>
           </button>
         </div>
         <div className="toggle-group">
           <button
-            className={`toggle-btn ${isDark ? 'active' : ''}`}
+            className="toggle-btn"
             onClick={toggleTheme}
             title={isDark ? t.app.switchToLight : t.app.switchToDark}
           >
             {isDark ? (
               <>
-                <MoonOutlined className="toggle-icon" />
-                <span className="toggle-text-active">{t.app.dark}</span>
+                <SunOutlined className="toggle-icon" />
+                <span className="toggle-text-active">{t.app.light}</span>
               </>
             ) : (
               <>
-                <SunOutlined className="toggle-icon" />
-                <span className="toggle-text-active">{t.app.light}</span>
+                <MoonOutlined className="toggle-icon" />
+                <span className="toggle-text-active">{t.app.dark}</span>
               </>
             )}
           </button>
