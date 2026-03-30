@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Card, Form, Select, message, Spin, DatePicker, Button, Tag } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
-import { createChart, CandlestickSeries, HistogramSeries, LineSeries, IChartApi, ISeriesApi, CandlestickData, HistogramData, LineData, Time } from 'lightweight-charts';
+import { createChart, CandlestickSeries, HistogramSeries, LineSeries, IChartApi, ISeriesApi, CandlestickData, HistogramData, LineData, Time, CrosshairMode, ColorType } from 'lightweight-charts';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { Option } = Select;
 
@@ -45,8 +46,79 @@ const INDICATOR_OPTIONS: { value: IndicatorType; label: string }[] = [
   { value: 'Stoch', label: 'Stoch' },
 ];
 
+const getChartTheme = (isDark: boolean) => {
+  if (isDark) {
+    return {
+      layout: {
+        background: { type: ColorType.Solid, color: '#131722' },
+        textColor: '#d1d4dc',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontSize: 12,
+      },
+      grid: {
+        vertLines: { color: 'rgba(255, 255, 255, 0.04)' },
+        horzLines: { color: 'rgba(255, 255, 255, 0.04)' },
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: {
+          color: 'rgba(59, 130, 246, 0.6)',
+          labelBackgroundColor: '#3b82f6',
+        },
+        horzLine: {
+          color: 'rgba(59, 130, 246, 0.6)',
+          labelBackgroundColor: '#3b82f6',
+        },
+      },
+      timeScale: {
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        timeVisible: true,
+        secondsVisible: false,
+      },
+      rightPriceScale: {
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        scaleMargins: { top: 0.1, bottom: 0.2 },
+      },
+    };
+  }
+  return {
+    layout: {
+      background: { type: ColorType.Solid, color: '#ffffff' },
+      textColor: '#333333',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontSize: 12,
+    },
+    grid: {
+      vertLines: { color: 'rgba(0, 0, 0, 0.04)' },
+      horzLines: { color: 'rgba(0, 0, 0, 0.04)' },
+    },
+    crosshair: {
+      mode: CrosshairMode.Normal,
+      vertLine: {
+        color: 'rgba(59, 130, 246, 0.5)',
+        labelBackgroundColor: '#3b82f6',
+      },
+      horzLine: {
+        color: 'rgba(59, 130, 246, 0.5)',
+        labelBackgroundColor: '#3b82f6',
+      },
+    },
+    timeScale: {
+      borderColor: 'rgba(0, 0, 0, 0.1)',
+      timeVisible: true,
+      secondsVisible: false,
+    },
+    rightPriceScale: {
+      borderColor: 'rgba(0, 0, 0, 0.1)',
+      scaleMargins: { top: 0.1, bottom: 0.2 },
+    },
+  };
+};
+
 const KlineChart: React.FC = () => {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const mainChartContainerRef = useRef<HTMLDivElement>(null);
   const indicatorChartContainerRef = useRef<HTMLDivElement>(null);
   const mainChartRef = useRef<IChartApi | null>(null);
@@ -68,7 +140,7 @@ const KlineChart: React.FC = () => {
   const [selectedTime, setSelectedTime] = useState<dayjs.Dayjs | null>(null);
   const [selectedIndicator, setSelectedIndicator] = useState<IndicatorType>('VOL');
   const [visibleMAs, setVisibleMAs] = useState({ ma5: true, ma10: true, ma20: true, ma60: true });
-  const [hoverData, setHoverData] = useState<{ open: number; close: number; high: number; low: number; time: number } | null>(null);
+  const [hoverData, setHoverData] = useState<{ open: number; close: number; high: number; low: number; time: number; x: number; y: number } | null>(null);
 
   const dataRangeRef = useRef<{
     symbol: string;
@@ -340,20 +412,24 @@ const KlineChart: React.FC = () => {
   const setupIndicatorChart = useCallback((indicator: IndicatorType) => {
     if (!indicatorChartContainerRef.current) return;
 
-    // 只有在图表未初始化时才创建
-    if (!indicatorChartRef.current) {
-      const chartOptions = {
-        layout: { background: { color: '#1a1a1a' }, textColor: '#d1d4dc' },
-        grid: { vertLines: { color: '#2a2a2a' }, horzLines: { color: '#2a2a2a' } },
-        crosshair: { mode: 0 },
-        timeScale: { borderColor: '#2a2a2a', timeVisible: true, secondsVisible: false },
-        rightPriceScale: { borderColor: '#2a2a2a' },
-      };
+    const chartTheme = getChartTheme(isDark);
 
+    if (!indicatorChartRef.current) {
       const indChart = createChart(indicatorChartContainerRef.current, {
-        ...chartOptions,
+        ...chartTheme,
         width: indicatorChartContainerRef.current.clientWidth,
         height: 120,
+        handleScroll: {
+          vertTouchDrag: true,
+          horzTouchDrag: true,
+          mouseWheel: true,
+          pressedMouseMove: true,
+        },
+        handleScale: {
+          axisPressedMouseMove: true,
+          mouseWheel: true,
+          pinch: true,
+        },
       });
 
       indicatorChartRef.current = indChart;
@@ -549,7 +625,7 @@ const KlineChart: React.FC = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isDark]);
 
   const updateIndicators = useCallback((klineData: KlineDataItem[], indicator: IndicatorType) => {
     // 防御性检查：确保图表和系列都存在
@@ -765,18 +841,31 @@ const KlineChart: React.FC = () => {
   useEffect(() => {
     if (!mainChartContainerRef.current) return;
 
+    const chartTheme = getChartTheme(isDark);
     const mainChart = createChart(mainChartContainerRef.current, {
-      layout: { background: { color: '#1a1a1a' }, textColor: '#d1d4dc' },
-      grid: { vertLines: { color: '#2a2a2a' }, horzLines: { color: '#2a2a2a' } },
-      crosshair: { mode: 1 },
-      timeScale: { borderColor: '#2a2a2a', timeVisible: true, secondsVisible: false },
-      rightPriceScale: { borderColor: '#2a2a2a' },
+      ...chartTheme,
       width: mainChartContainerRef.current.clientWidth,
       height: 400,
+      handleScroll: {
+        vertTouchDrag: true,
+        horzTouchDrag: true,
+        mouseWheel: true,
+        pressedMouseMove: true,
+      },
+      handleScale: {
+        axisPressedMouseMove: true,
+        mouseWheel: true,
+        pinch: true,
+      },
     });
 
     const candlestickSeries = mainChart.addSeries(CandlestickSeries, {
-      upColor: '#26a69a', downColor: '#ef5350', borderUpColor: '#26a69a', borderDownColor: '#ef5350', wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      borderUpColor: '#26a69a',
+      borderDownColor: '#ef5350',
+      wickUpColor: '#26a69a',
+      wickDownColor: '#ef5350',
     });
 
     const ma5Series = mainChart.addSeries(LineSeries, { color: '#FFD700', lineWidth: 1, priceLineVisible: false });
@@ -836,13 +925,15 @@ const KlineChart: React.FC = () => {
         return Math.abs(d.open_time / 1000 - timeNum) < 1;
       });
       
-      if (barData) {
+      if (barData && param.point) {
         setHoverData({
           open: parseFloat(barData.open_price),
           high: parseFloat(barData.high_price),
           low: parseFloat(barData.low_price),
           close: parseFloat(barData.close_price),
           time: timeNum,
+          x: param.point.x,
+          y: param.point.y,
         });
       } else {
         setHoverData(null);
@@ -881,7 +972,7 @@ const KlineChart: React.FC = () => {
         console.warn('图表清理时出错:', e);
       }
     };
-  }, [selectedIndicator, setupIndicatorChart]);
+  }, [selectedIndicator, setupIndicatorChart, isDark]);
 
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
   useEffect(() => { loadMoreHistoryRef.current = loadMoreHistoryData; loadMoreFutureRef.current = loadMoreFutureData; }, [loadMoreHistoryData, loadMoreFutureData]);
@@ -992,30 +1083,36 @@ const KlineChart: React.FC = () => {
           </div>
         </div>
 
-        {hoverData && (
-          <div className="ohlc-display">
-            <span className="ohlc-item ohlc-open">
-              <span className="ohlc-label">O</span>
-              <span className="ohlc-value">{hoverData.open.toFixed(2)}</span>
-            </span>
-            <span className="ohlc-item ohlc-close">
-              <span className="ohlc-label">C</span>
-              <span className={`ohlc-value ${hoverData.close >= hoverData.open ? 'up' : 'down'}`}>
-                {hoverData.close.toFixed(2)}
+        <div ref={mainChartContainerRef} className="main-chart">
+          {hoverData && (
+            <div 
+              className="ohlc-tooltip"
+              style={{
+                left: hoverData.x + 15,
+                top: hoverData.y - 10,
+              }}
+            >
+              <span className="ohlc-item">
+                <span className="ohlc-label o">O</span>
+                <span className="ohlc-value">{hoverData.open.toFixed(2)}</span>
               </span>
-            </span>
-            <span className="ohlc-item ohlc-high">
-              <span className="ohlc-label">H</span>
-              <span className="ohlc-value">{hoverData.high.toFixed(2)}</span>
-            </span>
-            <span className="ohlc-item ohlc-low">
-              <span className="ohlc-label">L</span>
-              <span className="ohlc-value">{hoverData.low.toFixed(2)}</span>
-            </span>
-          </div>
-        )}
-
-        <div ref={mainChartContainerRef} className="main-chart" />
+              <span className="ohlc-item">
+                <span className="ohlc-label h">H</span>
+                <span className="ohlc-value">{hoverData.high.toFixed(2)}</span>
+              </span>
+              <span className="ohlc-item">
+                <span className="ohlc-label l">L</span>
+                <span className="ohlc-value">{hoverData.low.toFixed(2)}</span>
+              </span>
+              <span className="ohlc-item">
+                <span className="ohlc-label c">C</span>
+                <span className={`ohlc-value ${hoverData.close >= hoverData.open ? 'up' : 'down'}`}>
+                  {hoverData.close.toFixed(2)}
+                </span>
+              </span>
+            </div>
+          )}
+        </div>
 
         <div ref={indicatorChartContainerRef} className="indicator-chart" />
       </Card>
